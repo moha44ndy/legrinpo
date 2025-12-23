@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useChat } from '@/hooks/useChat';
 import { subscribeToToasts, showToast, closeToast } from '@/utils/toast';
@@ -8,7 +8,7 @@ import { ToastContainer, Toast } from '@/components/Toast';
 import '../globals.css';
 import '/css/chat_de_discussion.css';
 
-export default function ChatPage() {
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const roomId = searchParams.get('room');
@@ -329,3 +329,16 @@ export default function ChatPage() {
   );
 }
 
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <main className="chat-main-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center', color: '#000000' }}>
+          <p>Chargement...</p>
+        </div>
+      </main>
+    }>
+      <ChatPageContent />
+    </Suspense>
+  );
+}
