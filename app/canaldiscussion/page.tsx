@@ -94,14 +94,14 @@ export default function CanalDiscussionPage() {
     return 'Aucun message';
   };
 
-  // Générer un avatar avec couleur basée sur le nom (palette rouge/blanc)
+  // Générer un avatar avec couleur basée sur le nom (palette noir/bleu)
   const getAvatar = (name: string): { char: string; color: string } => {
-    if (!name) return { char: '👤', color: '#d32f2f' };
+    if (!name) return { char: '👤', color: '#2563eb' };
     const firstChar = name.charAt(0).toUpperCase();
-    // Palette de couleurs rouge/blanc style Opera News
+    // Palette de couleurs noir/bleu
     const colors = [
-      '#d32f2f', '#f44336', '#e53935', '#c62828', '#b71c1c',
-      '#ef5350', '#e57373', '#ef9a9a', '#ffcdd2', '#ff5252'
+      '#2563eb', '#1e40af', '#3b82f6', '#1d4ed8', '#1e3a8a',
+      '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#3b82f6'
     ];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -148,6 +148,34 @@ export default function CanalDiscussionPage() {
           room: room
         };
       };
+
+      // Ajouter les discussions publiques par défaut
+      const publicRooms = [
+        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', icon: '🌍' },
+        { id: 'public_cedeao', name: 'CEDEAO', description: 'Communauté Économique', icon: '🤝' },
+        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', icon: '💼' },
+        { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', icon: '🌐' }
+      ];
+
+      for (const publicRoom of publicRooms) {
+        const lastMessage = await getLastMessage(publicRoom.id);
+        chats.push({
+          id: publicRoom.id,
+          name: `${publicRoom.icon} ${publicRoom.name}`,
+          type: 'group',
+          isPrivate: false,
+          lastMessage: lastMessage,
+          timestamp: new Date().toISOString(),
+          avatar: { char: publicRoom.icon, color: '#d32f2f' },
+          room: {
+            id: publicRoom.id,
+            name: publicRoom.name,
+            description: publicRoom.description,
+            type: 'public',
+            createdAt: new Date().toISOString()
+          }
+        });
+      }
 
       // Ajouter les salons créés
       for (const room of created) {
@@ -474,15 +502,47 @@ export default function CanalDiscussionPage() {
         </button>
       </div>
 
+      {/* Public Rooms Section */}
+      {currentFilter === 'all' && (
+        <div className="public-rooms-section">
+          <h4 className="public-rooms-title">Discussions Publiques</h4>
+          <div className="public-room-grid">
+            {allChats
+              .filter(chat => chat.id.startsWith('public_'))
+              .map((chat) => {
+                const publicRoomInfo: { [key: string]: { icon: string; description: string } } = {
+                  'public_aes': { icon: '🌍', description: 'Alliance des États du Sahel' },
+                  'public_cedeao': { icon: '🤝', description: 'Communauté Économique' },
+                  'public_uemoa': { icon: '💼', description: 'Union Économique' },
+                  'public_autres': { icon: '🌐', description: 'Organisation Globale' }
+                };
+                const info = publicRoomInfo[chat.id] || { icon: '🌐', description: '' };
+                
+                return (
+                  <button
+                    key={chat.id}
+                    className="public-room-btn"
+                    onClick={() => handleRejoinRoom(chat)}
+                  >
+                    <span>{info.icon}</span>
+                    <span>{chat.room.name || chat.name.replace(info.icon + ' ', '')}</span>
+                    <small>{info.description}</small>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Chat List */}
       <div className="chat-list">
-        {filteredChats.length === 0 ? (
+        {filteredChats.filter(chat => !chat.id.startsWith('public_')).length === 0 ? (
           <div className="empty-state">
             <p>Aucune discussion</p>
             <small>Créez votre première discussion pour commencer</small>
           </div>
         ) : (
-          filteredChats.map((chat) => {
+          filteredChats.filter(chat => !chat.id.startsWith('public_')).map((chat) => {
             const time = formatTime(chat.timestamp);
             const avatar = chat.avatar;
 
@@ -505,19 +565,26 @@ export default function CanalDiscussionPage() {
                       {time}
                     </span>
                   </div>
+                  {chat.room.description && (
+                    <div className="chat-description" style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.6)', marginTop: '2px' }}>
+                      {chat.room.description}
+                    </div>
+                  )}
                   <div className="chat-preview">
                     <span className="chat-message">{chat.lastMessage}</span>
                   </div>
                 </div>
-                <button 
-                  className="chat-delete-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteRoom(chat.id);
-                  }}
-                >
-                  🗑️
-                </button>
+                {!chat.id.startsWith('public_') && (
+                  <button 
+                    className="chat-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRoom(chat.id);
+                    }}
+                  >
+                    🗑️
+                  </button>
+                )}
               </div>
             );
           })
@@ -572,32 +639,6 @@ export default function CanalDiscussionPage() {
           <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">📋 Rejoindre une Discussion</h3>
             
-            <div className="public-rooms">
-              <h4>Discussions Publiques</h4>
-              <div className="public-room-grid">
-                <button className="public-room-btn" onClick={() => { handleJoinPublic('aes'); setShowJoinModal(false); }}>
-                  <span>🌍</span>
-                  <span>AES</span>
-                  <small>Alliance des États du Sahel</small>
-                </button>
-                <button className="public-room-btn" onClick={() => { handleJoinPublic('cedeao'); setShowJoinModal(false); }}>
-                  <span>🤝</span>
-                  <span>CEDEAO</span>
-                  <small>Communauté Économique</small>
-                </button>
-                <button className="public-room-btn" onClick={() => { handleJoinPublic('uemoa'); setShowJoinModal(false); }}>
-                  <span>💼</span>
-                  <span>UEMOA</span>
-                  <small>Union Économique</small>
-                </button>
-                <button className="public-room-btn" onClick={() => { handleJoinPublic('autres'); setShowJoinModal(false); }}>
-                  <span>🌐</span>
-                  <span>Globale Organisation</span>
-                  <small>Organisation Globale</small>
-                </button>
-              </div>
-            </div>
-
             <div className="join-section-modal">
               <h4>Rejoindre par lien</h4>
               <div className="join-form-modal">

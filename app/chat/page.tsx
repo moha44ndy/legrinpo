@@ -130,7 +130,7 @@ function ChatPageContent() {
 
   if (isPrivateRoom && !passwordVerified && connectionStatus === 'offline') {
     return (
-      <main style={{ padding: 40, color: '#000000', textAlign: 'center', background: '#ffffff' }}>
+      <main style={{ padding: 40, color: '#ffffff', textAlign: 'center', background: '#0a0e27' }}>
         <div className="error-message" style={{ textAlign: 'center', padding: '40px' }}>
           <h2>🔐 Accès Refusé</h2>
           <p style={{ margin: '20px 0' }}>
@@ -139,7 +139,7 @@ function ChatPageContent() {
           <a
             href="/canaldiscussion"
             style={{
-              background: '#d32f2f',
+              background: '#4a9eff',
               color: '#ffffff',
               padding: '12px 25px',
               borderRadius: '20px',
@@ -182,7 +182,7 @@ function ChatPageContent() {
         <div className="chat-content">
           <div className="messages" id="messages">
             {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
                 <p>Aucun message pour le moment.</p>
                 <p>Commencez la discussion en envoyant un message !</p>
               </div>
@@ -228,9 +228,9 @@ function ChatPageContent() {
                                   minHeight: '60px',
                                   padding: '8px',
                                   borderRadius: '8px',
-                                  background: 'rgba(0, 0, 0, 0.05)',
-                                  color: '#000000',
-                                  border: '1px solid rgba(211, 47, 47, 0.3)',
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  color: '#ffffff',
+                                  border: '1px solid rgba(74, 158, 255, 0.3)',
                                 }}
                               />
                               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
@@ -238,7 +238,7 @@ function ChatPageContent() {
                                   onClick={handleSaveEdit}
                                   style={{
                                     padding: '6px 12px',
-                                    background: '#d32f2f',
+                                    background: '#4a9eff',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
@@ -254,8 +254,8 @@ function ChatPageContent() {
                                   }}
                                   style={{
                                     padding: '6px 12px',
-                                    background: 'rgba(0, 0, 0, 0.1)',
-                                    color: '#000000',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    color: '#ffffff',
                                     border: 'none',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
