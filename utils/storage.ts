@@ -27,6 +27,7 @@ export interface RoomHistoryItem {
   createdAt?: string;
   joinedAt?: string;
   isArtist?: boolean;
+  description?: string;
 }
 
 export interface RoomHistory {
