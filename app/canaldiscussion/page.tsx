@@ -6,7 +6,7 @@ import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/
 import { subscribeToToasts, showToast, showConfirmToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
 import '../globals.css';
 import './canaldiscussion-wa.css';
 
@@ -19,6 +19,8 @@ interface ChatItem {
   timestamp: string;
   avatar: { char: string; color: string };
   room: RoomHistoryItem;
+  isUnread?: boolean;
+  isFavorite?: boolean;
 }
 
 export default function CanalDiscussionPage() {
@@ -38,9 +40,12 @@ export default function CanalDiscussionPage() {
   const [history, setHistory] = useState<RoomHistory>({ created: [], joined: [] });
   const [allChats, setAllChats] = useState<ChatItem[]>([]);
   const [filteredChats, setFilteredChats] = useState<ChatItem[]>([]);
-  const [currentFilter, setCurrentFilter] = useState<'all' | 'groups'>('all');
+  const [currentFilter, setCurrentFilter] = useState<'all' | 'groups' | 'unread' | 'favorites'>('all');
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [unreadChats, setUnreadChats] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
+  const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
   
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -195,10 +200,105 @@ export default function CanalDiscussionPage() {
       chats.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       setAllChats(chats);
+      
+      // Initialiser les timestamps des derniers messages
+      const timestamps: { [key: string]: number } = {};
+      for (const chat of chats) {
+        timestamps[chat.id] = new Date(chat.timestamp).getTime();
+      }
+      setLastMessageTimestamps(timestamps);
     };
 
     loadDiscussions();
   }, [history]);
+
+  // Écouter les nouveaux messages en temps réel pour marquer comme non lu
+  useEffect(() => {
+    if (allChats.length === 0) return;
+
+    const unsubscribes: (() => void)[] = [];
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isInChat = currentPath.startsWith('/chat');
+    
+    // Si on est dans une discussion, récupérer l'ID de la room depuis l'URL
+    let activeRoomId: string | null = null;
+    if (isInChat && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      activeRoomId = params.get('room');
+    }
+
+    allChats.forEach((chat) => {
+      // Ne pas écouter si on est dans cette discussion
+      if (chat.id === activeRoomId) return;
+
+      try {
+        const messagesRef = collection(db, 'chats', chat.id, 'messages');
+        const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+        
+        const unsubscribe = onSnapshot(
+          messagesQuery,
+          (snapshot) => {
+            if (!snapshot.empty) {
+              const lastDoc = snapshot.docs[0];
+              const data = lastDoc.data();
+              const messageTimestamp = data.timestamp?.toMillis?.() || (data.timestamp?.seconds ? data.timestamp.seconds * 1000 : new Date().getTime());
+              const messageUsername = data.username || '';
+              const currentUser = username || 'Membre';
+              
+              // Vérifier si c'est un nouveau message (plus récent que le dernier connu)
+              const lastKnownTimestamp = lastMessageTimestamps[chat.id] || 0;
+              
+              if (messageTimestamp > lastKnownTimestamp) {
+                // Mettre à jour le timestamp
+                setLastMessageTimestamps(prev => ({
+                  ...prev,
+                  [chat.id]: messageTimestamp
+                }));
+                
+                // Mettre à jour le cache du dernier message
+                const message = data.message || data.text || '';
+                let preview = '';
+                if (message) {
+                  preview = message.length > 50 ? message.substring(0, 50) + '...' : message;
+                } else {
+                  preview = '📎 Pièce jointe';
+                }
+                
+                if (messageUsername) {
+                  preview = `~${messageUsername}: ${preview}`;
+                }
+                
+                setLastMessagesCache(prev => ({ ...prev, [chat.id]: preview }));
+                
+                // Marquer comme non lu seulement si :
+                // 1. Ce n'est pas l'utilisateur actuel qui a envoyé le message
+                // 2. On n'est pas actuellement dans cette discussion
+                if (messageUsername !== currentUser && chat.id !== activeRoomId) {
+                  setUnreadChats(prev => {
+                    const newUnread = new Set(prev);
+                    newUnread.add(chat.id);
+                    localStorage.setItem('chat_unread', JSON.stringify(Array.from(newUnread)));
+                    return newUnread;
+                  });
+                }
+              }
+            }
+          },
+          (error) => {
+            console.error(`Erreur lors de l'écoute des messages pour ${chat.id}:`, error);
+          }
+        );
+        
+        unsubscribes.push(unsubscribe);
+      } catch (error) {
+        console.error(`Erreur lors de la configuration de l'écoute pour ${chat.id}:`, error);
+      }
+    });
+
+    return () => {
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+    };
+  }, [allChats, username, lastMessageTimestamps]);
 
   // Filtrer les discussions
   useEffect(() => {
@@ -207,6 +307,10 @@ export default function CanalDiscussionPage() {
     // Appliquer le filtre
     if (currentFilter === 'groups') {
       filtered = filtered.filter(chat => chat.type === 'group');
+    } else if (currentFilter === 'unread') {
+      filtered = filtered.filter(chat => unreadChats.has(chat.id));
+    } else if (currentFilter === 'favorites') {
+      filtered = filtered.filter(chat => favorites.has(chat.id));
     }
 
     // Appliquer la recherche
@@ -219,7 +323,7 @@ export default function CanalDiscussionPage() {
     }
 
     setFilteredChats(filtered);
-  }, [allChats, currentFilter, searchQuery]);
+  }, [allChats, currentFilter, searchQuery, favorites, unreadChats]);
 
   // Extraire le nom du salon depuis l'ID
   const extractRoomName = (roomId: string): string => {
@@ -405,11 +509,49 @@ export default function CanalDiscussionPage() {
   };
 
   const handleRejoinRoom = (chat: ChatItem) => {
+    // Marquer comme lu quand on ouvre la discussion
+    if (unreadChats.has(chat.id)) {
+      const newUnread = new Set(unreadChats);
+      newUnread.delete(chat.id);
+      setUnreadChats(newUnread);
+      localStorage.setItem('chat_unread', JSON.stringify(Array.from(newUnread)));
+    }
+    
+    // Mettre à jour le timestamp du dernier message lu
+    setLastMessageTimestamps(prev => ({
+      ...prev,
+      [chat.id]: Date.now()
+    }));
+    
     router.push(
       `/chat?room=${encodeURIComponent(chat.room.id)}${
         chat.room.password ? `&password=${encodeURIComponent(chat.room.password)}` : ''
       }`
     );
+  };
+
+  const toggleFavorite = (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(chatId)) {
+      newFavorites.delete(chatId);
+    } else {
+      newFavorites.add(chatId);
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem('chat_favorites', JSON.stringify(Array.from(newFavorites)));
+  };
+
+  const toggleUnread = (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newUnread = new Set(unreadChats);
+    if (newUnread.has(chatId)) {
+      newUnread.delete(chatId);
+    } else {
+      newUnread.add(chatId);
+    }
+    setUnreadChats(newUnread);
+    localStorage.setItem('chat_unread', JSON.stringify(Array.from(newUnread)));
   };
 
   const handleDeleteRoom = (chatId: string) => {
@@ -458,6 +600,8 @@ export default function CanalDiscussionPage() {
   };
 
   const groupsCount = allChats.filter(chat => chat.type === 'group').length;
+  const unreadCount = allChats.filter(chat => unreadChats.has(chat.id)).length;
+  const favoritesCount = allChats.filter(chat => favorites.has(chat.id)).length;
 
   return (
     <div className="wa-container">
@@ -492,13 +636,25 @@ export default function CanalDiscussionPage() {
           className={`filter-btn ${currentFilter === 'all' ? 'active' : ''}`}
           onClick={() => setCurrentFilter('all')}
         >
-          All
+          Tous
         </button>
         <button
           className={`filter-btn ${currentFilter === 'groups' ? 'active' : ''}`}
           onClick={() => setCurrentFilter('groups')}
         >
-          Groups {groupsCount > 0 && <span className="filter-count">{groupsCount}</span>}
+          Groupes {groupsCount > 0 && <span className="filter-count">{groupsCount}</span>}
+        </button>
+        <button
+          className={`filter-btn ${currentFilter === 'unread' ? 'active' : ''}`}
+          onClick={() => setCurrentFilter('unread')}
+        >
+          Non lues {unreadCount > 0 && <span className="filter-count">{unreadCount}</span>}
+        </button>
+        <button
+          className={`filter-btn ${currentFilter === 'favorites' ? 'active' : ''}`}
+          onClick={() => setCurrentFilter('favorites')}
+        >
+          Favoris {favoritesCount > 0 && <span className="filter-count">{favoritesCount}</span>}
         </button>
       </div>
 
@@ -560,13 +716,16 @@ export default function CanalDiscussionPage() {
                 </div>
                 <div className="chat-content">
                   <div className="chat-header">
-                    <span className="chat-name">{chat.name}</span>
+                    <span className="chat-name">
+                      {chat.name}
+                      {unreadChats.has(chat.id) && <span className="unread-badge" style={{ marginLeft: '8px' }}>●</span>}
+                    </span>
                     <span className="chat-time">
                       {time}
                     </span>
                   </div>
                   {chat.room.description && (
-                    <div className="chat-description" style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.6)', marginTop: '2px' }}>
+                    <div className="chat-description" style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
                       {chat.room.description}
                     </div>
                   )}
@@ -574,17 +733,47 @@ export default function CanalDiscussionPage() {
                     <span className="chat-message">{chat.lastMessage}</span>
                   </div>
                 </div>
-                {!chat.id.startsWith('public_') && (
+                <div className="chat-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <button 
-                    className="chat-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteRoom(chat.id);
+                    className="chat-action-btn"
+                    onClick={(e) => toggleFavorite(chat.id, e)}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      fontSize: '18px', 
+                      cursor: 'pointer',
+                      color: favorites.has(chat.id) ? '#4a9eff' : 'rgba(255, 255, 255, 0.4)'
                     }}
+                    title={favorites.has(chat.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                   >
-                    🗑️
+                    {favorites.has(chat.id) ? '⭐' : '☆'}
                   </button>
-                )}
+                  <button 
+                    className="chat-action-btn"
+                    onClick={(e) => toggleUnread(chat.id, e)}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      fontSize: '18px', 
+                      cursor: 'pointer',
+                      color: unreadChats.has(chat.id) ? '#4a9eff' : 'rgba(255, 255, 255, 0.4)'
+                    }}
+                    title={unreadChats.has(chat.id) ? 'Marquer comme lu' : 'Marquer comme non lu'}
+                  >
+                    {unreadChats.has(chat.id) ? '🔵' : '⚪'}
+                  </button>
+                  {!chat.id.startsWith('public_') && (
+                    <button 
+                      className="chat-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRoom(chat.id);
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })
