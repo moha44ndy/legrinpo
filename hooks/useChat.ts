@@ -16,7 +16,9 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  increment,
 } from 'firebase/firestore';
+import { rewardForComment, rewardForReactions } from '@/utils/wallet';
 
 export interface ChatMessage {
   id: string;
@@ -26,6 +28,8 @@ export interface ChatMessage {
   timestamp: Date;
   edited?: boolean;
   isArtist?: boolean;
+  reactions?: { [userId: string]: string }; // userId -> emoji
+  reactionCount?: number;
 }
 
 interface UseChatOptions {
@@ -104,6 +108,9 @@ export function useChat({
             const newMessages: ChatMessage[] = [];
             snapshot.forEach((doc) => {
               const data = doc.data();
+              const reactions = data.reactions || {};
+              const reactionCount = Object.keys(reactions).length;
+              
               newMessages.push({
                 id: doc.id,
                 text: data.text || '',
@@ -112,6 +119,8 @@ export function useChat({
                 timestamp: data.timestamp?.toDate() || new Date(),
                 edited: data.edited || false,
                 isArtist: data.isArtist || false,
+                reactions,
+                reactionCount,
               });
             });
             setMessages(newMessages);
@@ -151,13 +160,23 @@ export function useChat({
 
       try {
         const messagesRef = collection(db, 'chats', roomId, 'messages');
-        await addDoc(messagesRef, {
+        const docRef = await addDoc(messagesRef, {
           text: text.trim(),
           username,
           userId,
           timestamp: serverTimestamp(),
           edited: false,
+          reactions: {},
+          reactionCount: 0,
         });
+        
+        // Récompenser l'utilisateur pour avoir envoyé un commentaire
+        try {
+          await rewardForComment(userId, roomId, docRef.id);
+        } catch (rewardError) {
+          console.error('Erreur lors de la récompense:', rewardError);
+        }
+        
         scrollToBottom();
       } catch (error) {
         console.error('Erreur lors de l\'envoi du message:', error);
@@ -204,6 +223,7 @@ export function useChat({
     sendMessage,
     editMessage,
     deleteMessage,
+    toggleReaction,
     messagesEndRef,
     scrollToBottom,
   };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
 import { subscribeToToasts, showToast, showConfirmToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
@@ -25,7 +26,9 @@ interface ChatItem {
 
 export default function CanalDiscussionPage() {
   const router = useRouter();
-  const [username] = useState<string>('Membre');
+  const { user, userProfile, loading: authLoading, logout } = useAuth();
+  const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
+  const userId = user?.uid || `user_${Date.now()}`;
   
   const [showPrivateForm, setShowPrivateForm] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -603,6 +606,32 @@ export default function CanalDiscussionPage() {
   const unreadCount = allChats.filter(chat => unreadChats.has(chat.id)).length;
   const favoritesCount = allChats.filter(chat => favorites.has(chat.id)).length;
 
+  // Rediriger vers login si non connecté
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        background: '#0a0e27',
+        color: '#ffffff'
+      }}>
+        Chargement...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="wa-container">
       {/* Header */}
@@ -613,9 +642,22 @@ export default function CanalDiscussionPage() {
           </button>
           <h1 className="header-title">Discussions</h1>
           <div className="header-actions">
-            <button className="header-btn new-chat-btn" onClick={() => setShowPrivateForm(true)}>
-              <span>+</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ color: '#4a9eff', fontSize: '14px' }}>{username}</span>
+              <button className="header-btn new-chat-btn" onClick={() => setShowPrivateForm(true)}>
+                <span>+</span>
+              </button>
+              <button 
+                className="header-btn" 
+                onClick={async () => {
+                  await logout();
+                  router.push('/login');
+                }}
+                title="Déconnexion"
+              >
+                <span>🚪</span>
+              </button>
+            </div>
           </div>
         </div>
         <div className="search-container">

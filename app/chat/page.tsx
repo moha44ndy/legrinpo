@@ -2,20 +2,23 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/hooks/useChat';
 import { subscribeToToasts, showToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
+import Wallet from '@/components/Wallet';
 import '../globals.css';
 import '/css/chat_de_discussion.css';
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, userProfile, loading: authLoading, logout } = useAuth();
   const roomId = searchParams.get('room');
   const roomPassword = searchParams.get('password') || undefined;
 
-  const [username] = useState('Membre');
-  const [userId] = useState(`user_${Date.now()}`);
+  const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
+  const userId = user?.uid || `user_${Date.now()}`;
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -44,6 +47,7 @@ function ChatPageContent() {
     sendMessage,
     editMessage,
     deleteMessage,
+    toggleReaction,
     messagesEndRef,
     scrollToBottom,
   } = useChat({
@@ -171,11 +175,14 @@ function ChatPageContent() {
         <div className="participants-info">
           {messages.length > 0 && `${new Set(messages.map((m) => m.userId)).size} participant(s)`}
         </div>
-        <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
-          connectionStatus === 'online' ? '🟢 Connecté à M&Omusic' :
-          connectionStatus === 'connecting' ? '🟡 Connexion...' :
-          '🔴 Hors ligne'
-        } />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Wallet userId={userId} username={username} />
+          <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
+            connectionStatus === 'online' ? '🟢 Connecté à M&Omusic' :
+            connectionStatus === 'connecting' ? '🟡 Connexion...' :
+            '🔴 Hors ligne'
+          } />
+        </div>
       </div>
 
       <div className="chat-container">
@@ -276,6 +283,105 @@ function ChatPageContent() {
                             </>
                           )}
                         </div>
+                        {/* Réactions */}
+                        {message.reactions && Object.keys(message.reactions).length > 0 && (
+                          <div className="message-reactions" style={{ 
+                            display: 'flex', 
+                            gap: '8px', 
+                            marginTop: '8px',
+                            flexWrap: 'wrap',
+                            alignItems: 'center'
+                          }}>
+                            {Object.entries(message.reactions).map(([reactUserId, emoji]) => (
+                              <span 
+                                key={reactUserId}
+                                className="reaction-badge"
+                                style={{
+                                  background: 'rgba(74, 158, 255, 0.2)',
+                                  border: '1px solid rgba(74, 158, 255, 0.4)',
+                                  borderRadius: '12px',
+                                  padding: '4px 8px',
+                                  fontSize: '14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                {emoji}
+                              </span>
+                            ))}
+                            <span style={{ 
+                              fontSize: '12px', 
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              marginLeft: '4px'
+                            }}>
+                              {message.reactionCount || Object.keys(message.reactions).length}
+                            </span>
+                          </div>
+                        )}
+                        {/* Boutons de réaction */}
+                        {editingMessageId !== message.id && (
+                          <div className="message-reaction-buttons" style={{
+                            display: 'flex',
+                            gap: '6px',
+                            marginTop: '8px'
+                          }}>
+                            <button
+                              className="reaction-btn"
+                              onClick={() => toggleReaction(message.id, '👍')}
+                              title="J'aime"
+                              style={{
+                                background: message.reactions?.[userId] === '👍' 
+                                  ? 'rgba(74, 158, 255, 0.3)' 
+                                  : 'rgba(74, 158, 255, 0.1)',
+                                border: '1px solid rgba(74, 158, 255, 0.3)',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              👍
+                            </button>
+                            <button
+                              className="reaction-btn"
+                              onClick={() => toggleReaction(message.id, '❤️')}
+                              title="J'adore"
+                              style={{
+                                background: message.reactions?.[userId] === '❤️' 
+                                  ? 'rgba(74, 158, 255, 0.3)' 
+                                  : 'rgba(74, 158, 255, 0.1)',
+                                border: '1px solid rgba(74, 158, 255, 0.3)',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              ❤️
+                            </button>
+                            <button
+                              className="reaction-btn"
+                              onClick={() => toggleReaction(message.id, '🔥')}
+                              title="Feu"
+                              style={{
+                                background: message.reactions?.[userId] === '🔥' 
+                                  ? 'rgba(74, 158, 255, 0.3)' 
+                                  : 'rgba(74, 158, 255, 0.1)',
+                                border: '1px solid rgba(74, 158, 255, 0.3)',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              🔥
+                            </button>
+                          </div>
+                        )}
                         {isOwn && editingMessageId !== message.id && (
                           <div className="message-actions">
                             <button

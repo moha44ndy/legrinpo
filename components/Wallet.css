@@ -1,0 +1,124 @@
+.wallet-container {
+    background: rgba(74, 158, 255, 0.1);
+    border: 1px solid rgba(74, 158, 255, 0.3);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    transition: all 0.3s;
+}
+
+.wallet-container:hover {
+    background: rgba(74, 158, 255, 0.15);
+    border-color: rgba(74, 158, 255, 0.5);
+}
+
+.wallet-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    color: #4a9eff;
+}
+
+.wallet-icon {
+    font-size: 24px;
+}
+
+.wallet-balance {
+    flex: 1;
+    font-size: 18px;
+    color: #ffffff;
+}
+
+.wallet-toggle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    transition: transform 0.3s;
+}
+
+.wallet-details {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(74, 158, 255, 0.2);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.wallet-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(74, 158, 255, 0.1);
+}
+
+.wallet-stat:last-child {
+    border-bottom: none;
+}
+
+.wallet-stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.wallet-stat-value {
+    color: #4a9eff;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.wallet-info {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(74, 158, 255, 0.05);
+    border-radius: 8px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+}
+
+.wallet-info p {
+    margin: 4px 0;
+}
+
+.wallet-info strong {
+    color: #4a9eff;
+}
+
+.wallet-refresh-btn {
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: rgba(74, 158, 255, 0.2);
+    border: 1px solid rgba(74, 158, 255, 0.4);
+    border-radius: 6px;
+    color: #4a9eff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.wallet-refresh-btn:hover {
+    background: rgba(74, 158, 255, 0.3);
+    border-color: rgba(74, 158, 255, 0.6);
+}
+
+.wallet-loading,
+.wallet-error {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
+
+.wallet-error {
+    color: #ff6b6b;
+}
+
