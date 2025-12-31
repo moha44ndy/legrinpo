@@ -347,7 +347,7 @@ function ChatPageContent() {
                             <button
                               className="reaction-btn"
                               onClick={() => toggleReaction(message.id, '❤️')}
-                              title="J'adore (+0.01 FCFA)"
+                              title="J'adore"
                               style={{
                                 background: message.reactions?.[userId] === '❤️' 
                                   ? 'rgba(74, 158, 255, 0.3)' 
@@ -365,7 +365,7 @@ function ChatPageContent() {
                             <button
                               className="reaction-btn"
                               onClick={() => toggleReaction(message.id, '🔥')}
-                              title="Feu (+0.02 FCFA)"
+                              title="Feu"
                               style={{
                                 background: message.reactions?.[userId] === '🔥' 
                                   ? 'rgba(74, 158, 255, 0.3)' 
@@ -383,7 +383,7 @@ function ChatPageContent() {
                             <button
                               className="reaction-btn"
                               onClick={() => toggleReaction(message.id, '😡')}
-                              title="Colère (-0.005 FCFA)"
+                              title="Colère"
                               style={{
                                 background: message.reactions?.[userId] === '😡' 
                                   ? 'rgba(255, 100, 100, 0.3)' 
