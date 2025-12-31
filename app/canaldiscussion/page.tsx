@@ -71,6 +71,8 @@ export default function CanalDiscussionPage() {
         return lastMessagesCache[roomId];
       }
 
+      if (!db) return '';
+
       const messagesRef = collection(db, 'chats', roomId, 'messages');
       const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
       const snapshot = await getDocs(messagesQuery);
@@ -235,6 +237,8 @@ export default function CanalDiscussionPage() {
       if (chat.id === activeRoomId) return;
 
       try {
+        if (!db) return;
+        
         const messagesRef = collection(db, 'chats', chat.id, 'messages');
         const messagesQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
         

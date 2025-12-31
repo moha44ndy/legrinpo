@@ -7,6 +7,8 @@ import { rewardMonthlyBonus } from '@/utils/wallet';
  * Vérifie si le bonus a déjà été distribué ce mois-ci pour un groupe
  */
 async function hasBonusBeenDistributedThisMonth(roomId: string): Promise<boolean> {
+  if (!db) return false;
+  
   const now = new Date();
   const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
@@ -20,6 +22,8 @@ async function hasBonusBeenDistributedThisMonth(roomId: string): Promise<boolean
  * Marque le bonus comme distribué pour ce mois
  */
 async function markBonusAsDistributed(roomId: string, creatorId: string, memberCount: number, bonusAmount: number): Promise<void> {
+  if (!db) return;
+  
   const now = new Date();
   const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
@@ -40,6 +44,8 @@ async function markBonusAsDistributed(roomId: string, creatorId: string, memberC
  */
 async function getAllGroupsWithCreators(): Promise<Array<{ roomId: string; creatorId: string }>> {
   const groups: Array<{ roomId: string; creatorId: string }> = [];
+  
+  if (!db) return groups;
   
   try {
     // Essayer d'abord de récupérer depuis la collection de métadonnées
@@ -108,6 +114,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Compter le nombre de membres uniques dans le groupe
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Firestore n\'est pas initialisé' },
+        { status: 500 }
+      );
+    }
+    
     const messagesRef = collection(db, 'chats', roomId, 'messages');
     const messagesSnapshot = await getDocs(messagesRef);
     
@@ -194,6 +207,8 @@ async function distributeBonusToAllGroups() {
         }
 
         // Compter les membres
+        if (!db) continue;
+        
         const messagesRef = collection(db, 'chats', group.roomId, 'messages');
         const messagesSnapshot = await getDocs(messagesRef);
         
@@ -287,6 +302,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Compter le nombre de membres uniques dans le groupe
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Firestore n\'est pas initialisé' },
+        { status: 500 }
+      );
+    }
+    
     const messagesRef = collection(db, 'chats', roomId, 'messages');
     const messagesSnapshot = await getDocs(messagesRef);
     

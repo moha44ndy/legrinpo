@@ -11,18 +11,27 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:231120774067:web:ef8e1a1d04040e6f49e1c6"
 };
 
-let app: FirebaseApp;
-let db: Firestore;
-let auth: Auth;
+let app: FirebaseApp | undefined;
+let db: Firestore | undefined;
+let auth: Auth | undefined;
 
 if (typeof window !== 'undefined') {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
+  try {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
+    db = getFirestore(app);
+    auth = getAuth(app);
+  } catch (error) {
+    console.error('Erreur lors de l\'initialisation de Firebase:', error);
   }
-  db = getFirestore(app);
-  auth = getAuth(app);
+}
+
+// Vérifier que Firebase est bien initialisé
+if (typeof window !== 'undefined' && (!auth || !db)) {
+  console.error('⚠️ Firebase n\'est pas correctement initialisé. Vérifiez votre configuration.');
 }
 
 export { app, db, auth };

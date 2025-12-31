@@ -1,29 +1,20 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  User, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
 
 interface UserProfile {
+  id: number;
   uid: string;
   email: string;
   displayName: string;
   username: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt?: string;
+  updatedAt?: string;
   avatar?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   userProfile: UserProfile | null;
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<void>;
@@ -35,92 +26,118 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Charger l'utilisateur depuis la session
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        // Charger le profil utilisateur depuis Firestore
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUserProfile(userDoc.data() as UserProfile);
+    const loadUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setUser(data.user);
+            setUserProfile(data.user);
           } else {
-            // Créer un profil par défaut si il n'existe pas
-            const defaultProfile: UserProfile = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || '',
-              username: firebaseUser.displayName || `user_${firebaseUser.uid.substring(0, 8)}`,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            };
-            await setDoc(doc(db, 'users', firebaseUser.uid), defaultProfile);
-            setUserProfile(defaultProfile);
+            setUser(null);
+            setUserProfile(null);
           }
-        } catch (error) {
-          console.error('Erreur lors du chargement du profil:', error);
+        } else {
+          setUser(null);
+          setUserProfile(null);
         }
-      } else {
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'utilisateur:', error);
+        setUser(null);
         setUserProfile(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    loadUser();
   }, []);
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      // Vérifier que auth est initialisé
-      if (!auth) {
-        throw new Error('Firebase Auth n\'est pas initialisé. Vérifiez votre configuration Firebase.');
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      // Mettre à jour le profil Firebase
-      await updateProfile(firebaseUser, {
-        displayName: username,
+      console.log('Tentative d\'inscription pour:', email);
+      
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, username }),
       });
 
-      // Créer le profil dans Firestore
-      const userProfile: UserProfile = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        displayName: username,
-        username: username,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+      const data = await response.json();
 
-      await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
-      setUserProfile(userProfile);
+      if (!response.ok) {
+        const error = new Error(data.error || 'Erreur lors de l\'inscription');
+        (error as any).code = data.error?.toLowerCase().includes('email') ? 'auth/email-already-in-use' : 'auth/error';
+        throw error;
+      }
+
+      if (data.success && data.user) {
+        console.log('Utilisateur créé avec succès:', data.user.id);
+        setUser(data.user);
+        setUserProfile(data.user);
+      }
     } catch (error: any) {
-      console.error('Erreur lors de l\'inscription:', error);
-      // Re-lancer l'erreur pour que le composant puisse la gérer
+      console.error('Erreur complète lors de l\'inscription:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
       throw error;
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      console.log('Tentative de connexion pour:', email);
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const error = new Error(data.error || 'Erreur lors de la connexion');
+        (error as any).code = data.error?.toLowerCase().includes('email') || data.error?.toLowerCase().includes('mot de passe') 
+          ? 'auth/user-not-found' 
+          : 'auth/error';
+        throw error;
+      }
+
+      if (data.success && data.user) {
+        console.log('Connexion réussie');
+        setUser(data.user);
+        setUserProfile(data.user);
+      }
     } catch (error: any) {
-      console.error('Erreur lors de la connexion:', error);
+      console.error('Erreur complète lors de la connexion:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      setUser(null);
       setUserProfile(null);
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
@@ -132,21 +149,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Utilisateur non connecté');
 
     try {
+      // TODO: Créer une API route pour mettre à jour le profil
+      // Pour l'instant, on met juste à jour l'état local
       const updatedProfile = {
         ...userProfile,
         ...data,
-        updatedAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, 'users', user.uid), updatedProfile, { merge: true });
-      setUserProfile(updatedProfile as UserProfile);
-
-      // Mettre à jour aussi le profil Firebase Auth si displayName change
-      if (data.displayName || data.username) {
-        await updateProfile(user, {
-          displayName: data.displayName || data.username || user.displayName,
-        });
-      }
+      } as UserProfile;
+      
+      setUserProfile(updatedProfile);
+      setUser(updatedProfile);
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error);
       throw error;

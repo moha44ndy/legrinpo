@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { query } from '@/lib/db';
+import { randomUUID } from 'crypto';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email, password, username } = body;
+
+    // Validations
+    if (!email || !password || !username) {
+      return NextResponse.json(
+        { error: 'Email, mot de passe et nom d\'utilisateur sont requis' },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: 'Le mot de passe doit contenir au moins 6 caractères' },
+        { status: 400 }
+      );
+    }
+
+    if (username.length < 3) {
+      return NextResponse.json(
+        { error: 'Le nom d\'utilisateur doit contenir au moins 3 caractères' },
+        { status: 400 }
+      );
+    }
+
+    // Vérifier si l'email existe déjà
+    const existingEmail = await query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (Array.isArray(existingEmail) && existingEmail.length > 0) {
+      return NextResponse.json(
+        { error: 'Cet email est déjà utilisé' },
+        { status: 400 }
+      );
+    }
+
+    // Vérifier si le nom d'utilisateur existe déjà
+    const existingUsername = await query(
+      'SELECT id FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (Array.isArray(existingUsername) && existingUsername.length > 0) {
+      return NextResponse.json(
+        { error: 'Ce nom d\'utilisateur est déjà utilisé' },
+        { status: 400 }
+      );
+    }
+
+    // Hasher le mot de passe
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Générer un UID unique
+    const uid = randomUUID();
+
+    // Créer l'utilisateur
+    const result = await query(
+      `INSERT INTO users (uid, email, username, display_name, password_hash) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [uid, email, username, username, passwordHash]
+    );
+
+    const userId = (result as any).insertId;
+
+    // Créer le portefeuille pour l'utilisateur
+    await query(
+      `INSERT INTO wallets (user_id, balance, total_earned) 
+       VALUES (?, 0, 0)`,
+      [userId]
+    );
+
+    // Retourner les informations de l'utilisateur (sans le mot de passe)
+    const user = await query(
+      'SELECT id, uid, email, username, display_name, created_at FROM users WHERE id = ?',
+      [userId]
+    );
+
+    return NextResponse.json({
+      success: true,
+      user: Array.isArray(user) && user.length > 0 ? user[0] : null,
+    });
+  } catch (error: any) {
+    console.error('Erreur lors de l\'inscription:', error);
+    return NextResponse.json(
+      { error: 'Erreur lors de l\'inscription', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+

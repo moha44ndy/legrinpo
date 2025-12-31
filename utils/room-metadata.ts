@@ -22,6 +22,11 @@ export async function registerRoomMetadata(
       return;
     }
 
+    if (!db) {
+      console.warn('Firestore n\'est pas initialisé, impossible d\'enregistrer les métadonnées');
+      return;
+    }
+
     const roomMetadataRef = doc(db, 'rooms_metadata', roomId);
     await setDoc(roomMetadataRef, {
       roomId,

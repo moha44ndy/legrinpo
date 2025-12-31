@@ -71,6 +71,11 @@ export function useChat({
 
         // Vérifier le mot de passe si c'est un salon privé
         if (isPrivateRoom && roomPassword) {
+          if (!db) {
+            setConnectionStatus('offline');
+            return;
+          }
+          
           const roomRef = doc(db, 'chats', roomId, 'room_info', 'settings');
           const roomDoc = await getDoc(roomRef);
 
@@ -103,7 +108,18 @@ export function useChat({
           return;
         }
 
+        if (!db) {
+          setConnectionStatus('offline');
+          return;
+        }
+
         // Écouter les messages
+        if (!db) {
+          setConnectionStatus('offline');
+          setIsConnected(false);
+          return;
+        }
+        
         const messagesRef = collection(db, 'chats', roomId, 'messages');
         const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100));
 
@@ -162,6 +178,7 @@ export function useChat({
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || !isConnected) return;
+      if (!db) return;
 
       try {
         const messagesRef = collection(db, 'chats', roomId, 'messages');
@@ -195,6 +212,8 @@ export function useChat({
       if (!newText.trim()) return;
 
       try {
+        if (!db) return;
+        
         const messageRef = doc(db, 'chats', roomId, 'messages', messageId);
         await updateDoc(messageRef, {
           text: newText.trim(),
@@ -210,6 +229,8 @@ export function useChat({
 
   const deleteMessage = useCallback(
     async (messageId: string) => {
+      if (!db) return;
+      
       try {
         const messageRef = doc(db, 'chats', roomId, 'messages', messageId);
         await deleteDoc(messageRef);
@@ -222,6 +243,8 @@ export function useChat({
 
   const toggleReaction = useCallback(
     async (messageId: string, emoji: string) => {
+      if (!db) return;
+      
       try {
         const messageRef = doc(db, 'chats', roomId, 'messages', messageId);
         const messageDoc = await getDoc(messageRef);

@@ -42,6 +42,10 @@ export const MONTHLY_BONUS_PER_MEMBER = 0.01; // 0.01 FCFA par membre dans le gr
  * Initialise ou récupère le portefeuille d'un utilisateur
  */
 export async function getOrCreateWallet(userId: string): Promise<Wallet> {
+  if (!db) {
+    throw new Error('Firestore n\'est pas initialisé');
+  }
+  
   const walletRef = doc(db, 'wallets', userId);
   const walletSnap = await getDoc(walletRef);
 
@@ -73,6 +77,10 @@ export async function addToWallet(
   messageId?: string
 ): Promise<void> {
   if (amount <= 0) return;
+  if (!db) {
+    console.error('Firestore n\'est pas initialisé, impossible d\'ajouter de l\'argent');
+    return;
+  }
   
   const walletRef = doc(db, 'wallets', userId);
   
@@ -112,6 +120,10 @@ export async function removeFromWallet(
   messageId?: string
 ): Promise<void> {
   if (amount <= 0) return;
+  if (!db) {
+    console.error('Firestore n\'est pas initialisé, impossible de retirer de l\'argent');
+    return;
+  }
   
   const walletRef = doc(db, 'wallets', userId);
   
