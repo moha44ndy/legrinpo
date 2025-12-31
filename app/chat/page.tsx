@@ -347,7 +347,7 @@ function ChatPageContent() {
                             <button
                               className="reaction-btn"
                               onClick={() => toggleReaction(message.id, '❤️')}
-                              title="J'adore"
+                              title="J'adore (+0.01 FCFA)"
                               style={{
                                 background: message.reactions?.[userId] === '❤️' 
                                   ? 'rgba(74, 158, 255, 0.3)' 
@@ -365,7 +365,7 @@ function ChatPageContent() {
                             <button
                               className="reaction-btn"
                               onClick={() => toggleReaction(message.id, '🔥')}
-                              title="Feu"
+                              title="Feu (+0.02 FCFA)"
                               style={{
                                 background: message.reactions?.[userId] === '🔥' 
                                   ? 'rgba(74, 158, 255, 0.3)' 
@@ -379,6 +379,24 @@ function ChatPageContent() {
                               }}
                             >
                               🔥
+                            </button>
+                            <button
+                              className="reaction-btn"
+                              onClick={() => toggleReaction(message.id, '😡')}
+                              title="Colère (-0.005 FCFA)"
+                              style={{
+                                background: message.reactions?.[userId] === '😡' 
+                                  ? 'rgba(255, 100, 100, 0.3)' 
+                                  : 'rgba(255, 100, 100, 0.1)',
+                                border: '1px solid rgba(255, 100, 100, 0.3)',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                cursor: 'pointer',
+                                fontSize: '16px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              😡
                             </button>
                           </div>
                         )}
