@@ -19,19 +19,24 @@ if (typeof window !== 'undefined') {
   try {
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
+      console.log('✅ Firebase initialisé avec succès');
     } else {
       app = getApps()[0];
     }
     db = getFirestore(app);
     auth = getAuth(app);
+    
+    if (db && auth) {
+      console.log('✅ Firestore et Auth initialisés');
+    }
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation de Firebase:', error);
+    console.error('❌ Erreur lors de l\'initialisation de Firebase:', error);
   }
 }
 
 // Vérifier que Firebase est bien initialisé
 if (typeof window !== 'undefined' && (!auth || !db)) {
-  console.error('⚠️ Firebase n\'est pas correctement initialisé. Vérifiez votre configuration.');
+  console.warn('⚠️ Firebase n\'est pas correctement initialisé. Vérifiez votre configuration Firebase dans .env.local');
 }
 
 export { app, db, auth };

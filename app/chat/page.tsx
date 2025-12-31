@@ -18,7 +18,8 @@ function ChatPageContent() {
   const roomPassword = searchParams.get('password') || undefined;
 
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
-  const userId = user?.uid || `user_${Date.now()}`;
+  // Utiliser uid de userProfile ou user, ou générer un ID temporaire
+  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : `user_${Date.now()}`);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);

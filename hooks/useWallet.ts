@@ -18,13 +18,20 @@ export function useWallet(userId: string) {
     const loadWallet = async () => {
       try {
         setLoading(true);
-        const walletData = await getOrCreateWallet(userId);
-        setWallet(walletData);
-        setBalance(walletData.balance);
         setError(null);
-      } catch (err) {
-        console.error('Erreur lors du chargement du portefeuille:', err);
-        setError('Impossible de charger le portefeuille');
+        console.log('Chargement du portefeuille pour userId:', userId);
+        const walletData = await getOrCreateWallet(userId);
+        console.log('Portefeuille chargé:', walletData);
+        setWallet(walletData);
+        setBalance(walletData.balance || 0);
+      } catch (err: any) {
+        console.error('Erreur complète lors du chargement du portefeuille:', {
+          error: err,
+          message: err?.message,
+          stack: err?.stack,
+          userId,
+        });
+        setError(err?.message || 'Impossible de charger le portefeuille');
       } finally {
         setLoading(false);
       }

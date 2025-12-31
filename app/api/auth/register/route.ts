@@ -84,9 +84,24 @@ export async function POST(request: NextRequest) {
       [userId]
     );
 
+    const userData = Array.isArray(user) && user.length > 0 ? user[0] : null;
+    
+    if (!userData) {
+      return NextResponse.json(
+        { error: 'Erreur lors de la récupération de l\'utilisateur créé' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      user: Array.isArray(user) && user.length > 0 ? user[0] : null,
+      user: {
+        id: userData.id,
+        uid: userData.uid,
+        email: userData.email,
+        username: userData.username,
+        displayName: userData.display_name,
+      },
     });
   } catch (error: any) {
     console.error('Erreur lors de l\'inscription:', error);

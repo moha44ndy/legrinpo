@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
 import { subscribeToToasts, showToast, showConfirmToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
+import Wallet from '@/components/Wallet';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
 import '../globals.css';
@@ -28,7 +29,20 @@ export default function CanalDiscussionPage() {
   const router = useRouter();
   const { user, userProfile, loading: authLoading, logout } = useAuth();
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
-  const userId = user?.uid || `user_${Date.now()}`;
+  // Utiliser uid de userProfile ou user, ou générer un ID temporaire
+  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : `temp_${Date.now()}`);
+  
+  // Debug: vérifier l'ID utilisateur
+  useEffect(() => {
+    if (user || userProfile) {
+      console.log('🔍 User data pour Wallet:', { 
+        user, 
+        userProfile, 
+        userId,
+        hasUid: !!(userProfile?.uid || user?.uid)
+      });
+    }
+  }, [user, userProfile, userId]);
   
   const [showPrivateForm, setShowPrivateForm] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -647,6 +661,7 @@ export default function CanalDiscussionPage() {
           <h1 className="header-title">Discussions</h1>
           <div className="header-actions">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {userId && <Wallet userId={userId} username={username} />}
               <span style={{ color: '#4a9eff', fontSize: '14px' }}>{username}</span>
               <button className="header-btn new-chat-btn" onClick={() => setShowPrivateForm(true)}>
                 <span>+</span>

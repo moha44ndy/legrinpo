@@ -10,6 +10,12 @@ interface WalletProps {
 }
 
 export default function Wallet({ userId, username }: WalletProps) {
+  // Ne pas afficher si userId n'est pas disponible
+  if (!userId) {
+    console.warn('Wallet: userId non disponible');
+    return null;
+  }
+
   const { wallet, balance, loading, error, refreshBalance } = useWallet(userId);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -27,9 +33,11 @@ export default function Wallet({ userId, username }: WalletProps) {
   if (error) {
     return (
       <div className="wallet-container">
-        <div className="wallet-header">
+        <div className="wallet-header" title={error}>
           <span className="wallet-icon">💰</span>
-          <span className="wallet-error">{error}</span>
+          <span className="wallet-error" style={{ fontSize: '12px', color: '#ff6b6b' }}>
+            Erreur
+          </span>
         </div>
       </div>
     );

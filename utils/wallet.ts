@@ -42,27 +42,51 @@ export const MONTHLY_BONUS_PER_MEMBER = 0.01; // 0.01 FCFA par membre dans le gr
  * Initialise ou récupère le portefeuille d'un utilisateur
  */
 export async function getOrCreateWallet(userId: string): Promise<Wallet> {
+  if (!userId) {
+    throw new Error('userId est requis');
+  }
+
+  // Vérifier que nous sommes côté client
+  if (typeof window === 'undefined') {
+    throw new Error('getOrCreateWallet ne peut être appelé que côté client');
+  }
+
   if (!db) {
-    throw new Error('Firestore n\'est pas initialisé');
+    console.error('Firestore n\'est pas initialisé. Vérifiez votre configuration Firebase.');
+    throw new Error('Firestore n\'est pas initialisé. Vérifiez votre configuration Firebase dans .env.local');
   }
   
-  const walletRef = doc(db, 'wallets', userId);
-  const walletSnap = await getDoc(walletRef);
+  try {
+    const walletRef = doc(db, 'wallets', userId);
+    const walletSnap = await getDoc(walletRef);
 
-  if (walletSnap.exists()) {
-    return walletSnap.data() as Wallet;
-  } else {
-    // Créer un nouveau portefeuille
-    const newWallet: Wallet = {
-      userId,
-      balance: 0,
-      totalEarned: 0,
-      totalSpent: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    await setDoc(walletRef, newWallet);
-    return newWallet;
+    if (walletSnap.exists()) {
+      const data = walletSnap.data();
+      return {
+        userId: data.userId || userId,
+        balance: data.balance || 0,
+        totalEarned: data.totalEarned || 0,
+        totalSpent: data.totalSpent || 0,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      } as Wallet;
+    } else {
+      // Créer un nouveau portefeuille
+      const newWallet: Wallet = {
+        userId,
+        balance: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(walletRef, newWallet);
+      console.log('Portefeuille créé pour:', userId);
+      return newWallet;
+    }
+  } catch (error: any) {
+    console.error('Erreur lors de la récupération/création du portefeuille:', error);
+    throw new Error(`Erreur lors de la récupération du portefeuille: ${error.message}`);
   }
 }
 
