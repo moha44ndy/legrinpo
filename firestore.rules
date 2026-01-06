@@ -1,0 +1,145 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper pour obtenir l'ID utilisateur (compatible avec MySQL auth)
+    // Note: Comme l'auth est gérée par MySQL, request.auth peut être null
+    // On permet l'accès basé sur le document ID pour le développement
+    function getUserId() {
+      return request.auth != null && 'appUserId' in request.auth.token
+        ? string(request.auth.token.appUserId)
+        : (request.auth != null ? request.auth.uid : null);
+    }
+
+    // ===== Canal de discussion (INCHANGÉ - fonctionne comme avant) =====
+    match /chats/{roomId} {
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if true;
+        allow update: if true;
+        allow delete: if true;
+      }
+      match /participants/{participantId} {
+        allow read: if true;
+        allow write: if true;
+      }
+      match /room_info/settings {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+
+    // Collection de test
+    match /test/{document=**} {
+      allow read, write: if true;
+    }
+
+    // ===== SYSTÈME DE PORTEFEUILLE =====
+    // Permettre l'accès aux portefeuilles (sécurisé par document ID)
+    // En production, vous devriez ajouter une vérification d'authentification
+    match /wallets/{userId} {
+      allow read: if true; // Permettre la lecture (sécurisé par userId dans le document)
+      allow create: if true; // Permettre la création
+      allow update: if true; // Permettre la mise à jour
+      allow delete: if false; // Empêcher la suppression
+      
+      // Transactions sous-collection
+      match /transactions/{transactionId} {
+        allow read: if true;
+        allow create: if true;
+        allow update: if false; // Les transactions ne doivent pas être modifiées
+        allow delete: if false; // Les transactions ne doivent pas être supprimées
+      }
+    }
+
+    // ===== MÉTADONNÉES DES GROUPES =====
+    // Pour le système de bonus mensuel
+    match /rooms_metadata/{roomId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ===== BONUS MENSUEL =====
+    // Pour suivre les distributions de bonus
+    match /monthly_bonus/{document=**} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ===== FIREBASE STORAGE (pour les fichiers) =====
+    // Les règles Storage sont configurées séparément dans Firebase Console
+    // Allez dans Storage > Rules pour les configurer
+
+    // ===== DMs sécurisées (CORRIGÉ) =====
+    match /dm_conversations/{conversationId} {
+      allow read: if request.auth != null
+                  && getUserId() in resource.data.participants;
+      
+      allow create: if request.auth != null
+                    && request.resource.data.participants is list
+                    && getUserId() in request.resource.data.participants;
+      
+      allow update: if request.auth != null
+                    && getUserId() in resource.data.participants;
+    }
+
+    match /dm_messages/{messageId} {
+      
+      // LECTURE: autorisé si (sender OU recipient == user) OU si l'user est participant de la conversation
+      // (On filtre l'expiration côté client)
+      allow read: if request.auth != null && (
+                    string(resource.data.senderId) == getUserId() ||
+                    string(resource.data.recipientId) == getUserId() ||
+                    (
+                      resource.data.conversationId is string &&
+                      exists(/databases/$(database)/documents/dm_conversations/$(resource.data.conversationId)) &&
+                      getUserId() in get(/databases/$(database)/documents/dm_conversations/$(resource.data.conversationId)).data.participants
+                    )
+                  );
+      
+      // CRÉATION: Vérifier sender + conversation existe
+      allow create: if request.auth != null
+                    && string(request.resource.data.senderId) == getUserId()
+                    && request.resource.data.conversationId is string
+                    && request.resource.data.recipientId is string
+                    // Vérifier que la conversation existe et que l'user est participant
+                    && exists(/databases/$(database)/documents/dm_conversations/$(request.resource.data.conversationId))
+                    && getUserId() in get(/databases/$(database)/documents/dm_conversations/$(request.resource.data.conversationId)).data.participants;
+      
+      // UPDATE: L'auteur peut modifier pendant 5 minutes (contenu/expiration seulement)
+      allow update: if request.auth != null
+                    && string(resource.data.senderId) == getUserId()
+                    && resource.data.createdAt != null
+                    && request.time < resource.data.createdAt + duration.value(5, 'minutes')
+                    // Empêcher de changer les champs critiques
+                    && request.resource.data.senderId == resource.data.senderId
+                    && request.resource.data.recipientId == resource.data.recipientId
+                    && request.resource.data.conversationId == resource.data.conversationId
+                    // Ne permettre que content/expiresAt/editedAt à changer
+                    && request.resource.data.diff(resource.data).changedKeys().hasOnly(['content', 'expiresAt', 'editedAt']);
+      
+      // DELETE: L'auteur peut toujours supprimer
+      // OU n'importe quel participant si le message est expiré
+      allow delete: if request.auth != null
+                    && (
+                      // Cas 1: L'auteur supprime
+                      string(resource.data.senderId) == getUserId()
+                      ||
+                      // Cas 2: Message expiré + participant de la conversation
+                      (
+                        'expiresAt' in resource.data
+                        && resource.data.expiresAt != null
+                        && resource.data.expiresAt <= request.time
+                        && exists(/databases/$(database)/documents/dm_conversations/$(resource.data.conversationId))
+                        && getUserId() in get(/databases/$(database)/documents/dm_conversations/$(resource.data.conversationId)).data.participants
+                      )
+                    );
+    }
+  }
+}
+

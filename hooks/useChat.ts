@@ -21,6 +21,20 @@ import {
 import { rewardForComment, processReaction, removeReaction } from '@/utils/wallet';
 import { registerRoomMetadata } from '@/utils/room-metadata';
 
+export interface FileAttachment {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+}
+
+export interface FileAttachment {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+}
+
 export interface ChatMessage {
   id: string;
   text: string;
@@ -31,6 +45,8 @@ export interface ChatMessage {
   isArtist?: boolean;
   reactions?: { [userId: string]: string }; // userId -> emoji
   reactionCount?: number;
+  attachments?: FileAttachment[]; // Images, vidéos, fichiers
+  audio?: FileAttachment; // Note vocale
 }
 
 interface UseChatOptions {
@@ -142,6 +158,8 @@ export function useChat({
                 isArtist: data.isArtist || false,
                 reactions,
                 reactionCount,
+                attachments: data.attachments || undefined,
+                audio: data.audio || undefined,
               });
             });
             setMessages(newMessages);
@@ -176,21 +194,36 @@ export function useChat({
   }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, scrollToBottomInstant]);
 
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim() || !isConnected) return;
+    async (
+      text: string,
+      attachments?: FileAttachment[],
+      audio?: FileAttachment
+    ) => {
+      // Le message doit avoir au moins du texte, des pièces jointes ou un audio
+      if ((!text.trim() && (!attachments || attachments.length === 0) && !audio) || !isConnected) return;
       if (!db) return;
 
       try {
         const messagesRef = collection(db, 'chats', roomId, 'messages');
-        const docRef = await addDoc(messagesRef, {
-          text: text.trim(),
+        const messageData: any = {
+          text: text.trim() || '',
           username,
           userId,
           timestamp: serverTimestamp(),
           edited: false,
           reactions: {},
           reactionCount: 0,
-        });
+        };
+
+        if (attachments && attachments.length > 0) {
+          messageData.attachments = attachments;
+        }
+
+        if (audio) {
+          messageData.audio = audio;
+        }
+
+        const docRef = await addDoc(messagesRef, messageData);
         
         // Récompenser l'utilisateur pour avoir envoyé un commentaire
         try {

@@ -459,3 +459,109 @@
                 font-size: 0.9rem;
             }
         }
+
+        /* Styles pour les fichiers et notes vocales */
+        .voice-recorder {
+            padding: 12px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .voice-recorder-error {
+            color: #ff6b6b;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .voice-recorder-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .voice-recorder-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .voice-recorder-btn.start {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .voice-recorder-btn.start:hover {
+            background: #ff5252;
+        }
+
+        .voice-recorder-btn.stop {
+            background: #4a9eff;
+            color: white;
+        }
+
+        .voice-recorder-btn.stop:hover {
+            background: #3a8eef;
+        }
+
+        .voice-recorder-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        .voice-recorder-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .voice-recorder-timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #ffffff;
+        }
+
+        .recording-indicator {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .selected-files {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .message-attachments {
+            margin-bottom: 8px;
+        }
+
+        .audio-attachment {
+            margin-bottom: 8px;
+        }
+
+        .audio-attachment audio {
+            width: 100%;
+            max-width: 300px;
+            outline: none;
+        }
+
+        .message-attachments img,
+        .message-attachments video {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .message-attachments img:hover {
+            transform: scale(1.02);
+        }

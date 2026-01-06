@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Règles Firebase Storage pour les fichiers de chat
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permettre l'upload et la lecture des fichiers de chat
+    match /chats/{roomId}/messages/{messageId}/{fileName} {
+      // Permettre la lecture à tous
+      allow read: if true;
+      
+      // Permettre l'upload (création)
+      allow create: if true;
+      
+      // Empêcher la modification et la suppression
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Tous les autres fichiers sont interdits
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

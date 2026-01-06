@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useChat } from '@/hooks/useChat';
+import { useChat, FileAttachment } from '@/hooks/useChat';
 import { subscribeToToasts, showToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
 import Wallet from '@/components/Wallet';
+import VoiceRecorder from '@/components/VoiceRecorder';
+import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
+import { v4 as uuidv4 } from 'uuid';
 import '../globals.css';
 import '/css/chat_de_discussion.css';
 
@@ -24,6 +27,10 @@ function ChatPageContent() {
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -75,10 +82,108 @@ function ChatPageContent() {
     }
   }, [roomId, router]);
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
-    sendMessage(messageInput);
-    setMessageInput('');
+  const handleSendMessage = async () => {
+    // Le message doit avoir au moins du texte, des fichiers ou un audio
+    if (!messageInput.trim() && selectedFiles.length === 0 && !isRecordingVoice) return;
+    if (!roomId || !userId) return;
+
+    setUploading(true);
+
+    try {
+      const messageId = uuidv4();
+      const attachments: FileAttachment[] = [];
+      let audioAttachment: FileAttachment | undefined = undefined;
+
+      // Upload des fichiers sélectionnés
+      if (selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          if (!isFileTypeAllowed(file)) {
+            showToast(`Type de fichier non autorisé : ${file.name}`, 'error');
+            continue;
+          }
+
+          try {
+            const metadata = await uploadFile(file, roomId, userId, messageId);
+            attachments.push({
+              url: metadata.url,
+              name: metadata.name,
+              type: metadata.type,
+              size: metadata.size,
+            });
+          } catch (error: any) {
+            showToast(`Erreur lors de l'upload de ${file.name}: ${error.message}`, 'error');
+          }
+        }
+      }
+
+      // Envoyer le message avec les pièces jointes
+      await sendMessage(messageInput.trim(), attachments.length > 0 ? attachments : undefined, audioAttachment);
+      
+      // Réinitialiser
+      setMessageInput('');
+      setSelectedFiles([]);
+      setIsRecordingVoice(false);
+    } catch (error: any) {
+      showToast(`Erreur lors de l'envoi du message: ${error.message}`, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles: File[] = [];
+
+    files.forEach((file) => {
+      if (isFileTypeAllowed(file)) {
+        validFiles.push(file);
+      } else {
+        showToast(`Type de fichier non autorisé : ${file.name}`, 'error');
+      }
+    });
+
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
+    
+    // Réinitialiser l'input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleVoiceRecordingComplete = async (audioBlob: Blob) => {
+    if (!roomId || !userId) return;
+
+    setUploading(true);
+    setIsRecordingVoice(false);
+
+    try {
+      const messageId = uuidv4();
+      const audioMetadata = await uploadAudio(audioBlob, roomId, userId, messageId);
+      
+      const audioAttachment: FileAttachment = {
+        url: audioMetadata.url,
+        name: audioMetadata.name,
+        type: audioMetadata.type,
+        size: audioMetadata.size,
+      };
+
+      // Envoyer le message avec la note vocale
+      await sendMessage(messageInput.trim(), undefined, audioAttachment);
+      
+      setMessageInput('');
+    } catch (error: any) {
+      showToast(`Erreur lors de l'upload de la note vocale: ${error.message}`, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleVoiceRecordingCancel = () => {
+    setIsRecordingVoice(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -275,7 +380,101 @@ function ChatPageContent() {
                             </div>
                           ) : (
                             <>
-                              <div dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br>') }} />
+                              {/* Note vocale */}
+                              {message.audio && (
+                                <div className="audio-attachment" style={{ marginBottom: '8px' }}>
+                                  <audio controls style={{ width: '100%', maxWidth: '300px' }}>
+                                    <source src={message.audio.url} type={message.audio.type} />
+                                    Votre navigateur ne supporte pas l'élément audio.
+                                  </audio>
+                                  <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '4px' }}>
+                                    🎤 Note vocale
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Pièces jointes (images, vidéos, fichiers) */}
+                              {message.attachments && message.attachments.length > 0 && (
+                                <div className="message-attachments" style={{ marginBottom: '8px' }}>
+                                  {message.attachments.map((attachment, idx) => {
+                                    // Déterminer le type de média basé sur le type MIME
+                                    const getAttachmentType = (mimeType: string): 'image' | 'video' | 'audio' | 'document' | 'unknown' => {
+                                      if (mimeType.startsWith('image/')) return 'image';
+                                      if (mimeType.startsWith('video/')) return 'video';
+                                      if (mimeType.startsWith('audio/')) return 'audio';
+                                      if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('spreadsheet') || mimeType.includes('text')) return 'document';
+                                      return 'unknown';
+                                    };
+                                    const mediaType = getAttachmentType(attachment.type);
+                                    
+                                    if (mediaType === 'image') {
+                                      return (
+                                        <div key={idx} style={{ marginBottom: '8px' }}>
+                                          <img
+                                            src={attachment.url}
+                                            alt={attachment.name}
+                                            style={{
+                                              maxWidth: '100%',
+                                              maxHeight: '400px',
+                                              borderRadius: '8px',
+                                              cursor: 'pointer',
+                                            }}
+                                            onClick={() => window.open(attachment.url, '_blank')}
+                                          />
+                                        </div>
+                                      );
+                                    } else if (mediaType === 'video') {
+                                      return (
+                                        <div key={idx} style={{ marginBottom: '8px' }}>
+                                          <video
+                                            controls
+                                            style={{
+                                              maxWidth: '100%',
+                                              maxHeight: '400px',
+                                              borderRadius: '8px',
+                                            }}
+                                          >
+                                            <source src={attachment.url} type={attachment.type} />
+                                            Votre navigateur ne supporte pas la vidéo.
+                                          </video>
+                                        </div>
+                                      );
+                                    } else {
+                                      return (
+                                        <div key={idx} style={{ marginBottom: '4px' }}>
+                                          <a
+                                            href={attachment.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
+                                              padding: '8px 12px',
+                                              background: 'rgba(74, 158, 255, 0.1)',
+                                              border: '1px solid rgba(74, 158, 255, 0.3)',
+                                              borderRadius: '6px',
+                                              color: '#4a9eff',
+                                              textDecoration: 'none',
+                                            }}
+                                          >
+                                            📎 {attachment.name}
+                                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                                              ({(attachment.size / 1024).toFixed(1)} KB)
+                                            </span>
+                                          </a>
+                                        </div>
+                                      );
+                                    }
+                                  })}
+                                </div>
+                              )}
+                              
+                              {/* Texte du message */}
+                              {message.text && (
+                                <div dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br>') }} />
+                              )}
+                              
                               {message.edited && (
                                 <span style={{ fontSize: '0.7rem', opacity: 0.7, marginLeft: '8px' }}>
                                   (modifié)
@@ -430,22 +629,129 @@ function ChatPageContent() {
         </div>
 
         <div className="input-container">
-          <input
-            type="text"
-            className="message-input"
-            placeholder={isConnected ? 'Tapez votre message...' : 'Connexion en cours...'}
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={!isConnected}
-          />
-          <button
-            className="send-btn"
-            onClick={handleSendMessage}
-            disabled={!isConnected || !messageInput.trim()}
-          >
-            Envoyer
-          </button>
+          {/* Fichiers sélectionnés */}
+          {selectedFiles.length > 0 && (
+            <div className="selected-files" style={{
+              padding: '8px',
+              background: 'rgba(74, 158, 255, 0.1)',
+              borderBottom: '1px solid rgba(74, 158, 255, 0.2)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}>
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 8px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <span>{getMediaType(file) === 'image' ? '🖼️' : getMediaType(file) === 'video' ? '🎥' : '📎'}</span>
+                  <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {file.name}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveFile(index)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ff6b6b',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      padding: '0',
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Enregistrement vocal */}
+          {isRecordingVoice && (
+            <div style={{ padding: '8px', background: 'rgba(255, 107, 107, 0.1)', borderBottom: '1px solid rgba(255, 107, 107, 0.2)' }}>
+              <VoiceRecorder
+                onRecordingComplete={handleVoiceRecordingComplete}
+                onCancel={handleVoiceRecordingCancel}
+                maxDuration={60}
+              />
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Bouton pour sélectionner des fichiers */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!isConnected || uploading}
+              style={{
+                padding: '8px 12px',
+                background: 'rgba(74, 158, 255, 0.1)',
+                border: '1px solid rgba(74, 158, 255, 0.3)',
+                borderRadius: '6px',
+                color: '#4a9eff',
+                cursor: 'pointer',
+                fontSize: '18px',
+              }}
+              title="Joindre un fichier"
+            >
+              📎
+            </button>
+            
+            {/* Bouton pour enregistrer une note vocale */}
+            <button
+              type="button"
+              onClick={() => setIsRecordingVoice(true)}
+              disabled={!isConnected || uploading || isRecordingVoice}
+              style={{
+                padding: '8px 12px',
+                background: 'rgba(255, 107, 107, 0.1)',
+                border: '1px solid rgba(255, 107, 107, 0.3)',
+                borderRadius: '6px',
+                color: '#ff6b6b',
+                cursor: 'pointer',
+                fontSize: '18px',
+              }}
+              title="Enregistrer une note vocale (max 1 minute)"
+            >
+              🎤
+            </button>
+            
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              multiple
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              style={{ display: 'none' }}
+            />
+            
+            <input
+              type="text"
+              className="message-input"
+              placeholder={isConnected ? 'Tapez votre message...' : 'Connexion en cours...'}
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={!isConnected || uploading}
+              style={{ flex: 1 }}
+            />
+            
+            <button
+              className="send-btn"
+              onClick={handleSendMessage}
+              disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !isRecordingVoice)}
+            >
+              {uploading ? 'Envoi...' : 'Envoyer'}
+            </button>
+          </div>
         </div>
       </div>
 
