@@ -59,17 +59,7 @@ export default function Wallet({ userId, username }: WalletProps) {
         <div className="wallet-details">
           <div className="wallet-stat">
             <span className="wallet-stat-label">Total gagné:</span>
-            <span className="wallet-stat-value">{wallet.totalEarned.toFixed(3)} FCFA</span>
-          </div>
-          <div className="wallet-stat">
-            <span className="wallet-stat-label">Total dépensé:</span>
-            <span className="wallet-stat-value">{wallet.totalSpent.toFixed(3)} FCFA</span>
-          </div>
-          <div className="wallet-info">
-            <p>❤️ Réaction reçue: <strong>+0.01 FCFA</strong></p>
-            <p>🔥 Réaction reçue: <strong>+0.02 FCFA</strong></p>
-            <p>😡 Réaction reçue: <strong>-0.005 FCFA</strong></p>
-            <p>👥 Bonus mensuel créateur: <strong>+0.01 FCFA × membres</strong></p>
+            <span className="wallet-stat-value">{wallet.totalEarned.toFixed(2)} FCFA</span>
           </div>
           <button 
             className="wallet-refresh-btn"
