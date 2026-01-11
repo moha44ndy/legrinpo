@@ -272,29 +272,53 @@ function ChatPageContent() {
         <a href="/canaldiscussion" className="leave-btn">
           ← Retour
         </a>
-        <h1>
-          {isPublicRoom ? `🌍 ${getPublicRoomName(roomId)}` : isPrivateRoom ? '🔐 Discussion Privée' : '💬 Discussion'}
-        </h1>
-        <div className="room-info">
-          {isPublicRoom ? `Discussion Publique - ${getPublicRoomName(roomId)}` : `Discussion: ${roomId?.substring(0, 20)}...`}
-        </div>
-        <div className="participants-info">
-          {messages.length > 0 && `${new Set(messages.map((m) => m.userId)).size} participant(s)`}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', top: '12px', right: '20px' }}>
-          <Wallet userId={userId} username={username} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', top: '12px', right: '20px', flexDirection: 'row-reverse' }}>
           <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
             connectionStatus === 'online' ? '🟢 Connecté' :
             connectionStatus === 'connecting' ? '🟡 Connexion...' :
             '🔴 Hors ligne'
           } />
         </div>
+        <div className="header-content-wrapper">
+          <div className="wallet-header-top">
+            <Wallet userId={userId} username={username} />
+          </div>
+          <h1>
+            {isPublicRoom ? `🌍 ${getPublicRoomName(roomId)}` : isPrivateRoom ? '🔐 Discussion Privée' : '💬 Discussion'}
+          </h1>
+          <div className="room-info">
+            {isPublicRoom ? `Discussion Publique - ${getPublicRoomName(roomId)}` : `Discussion: ${roomId?.substring(0, 20)}...`}
+          </div>
+          <div className="participants-info">
+            {messages.length > 0 && `${new Set(messages.map((m) => m.userId)).size} participant(s)`}
+          </div>
+        </div>
       </div>
 
       <div className="chat-container">
         <div className="chat-content">
           <div className="messages" id="messages">
-            {messages.length === 0 ? (
+            {connectionStatus === 'connecting' ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                <div style={{ 
+                  display: 'inline-block',
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid rgba(74, 158, 255, 0.2)',
+                  borderTop: '4px solid #4a9eff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '20px'
+                }} />
+                <p style={{ marginTop: '20px', fontSize: '1rem' }}>Connexion en cours...</p>
+                <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Chargement des messages...</p>
+              </div>
+            ) : connectionStatus === 'offline' ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                <p style={{ fontSize: '1rem', color: '#ef4444', marginBottom: '10px' }}>🔴 Hors ligne</p>
+                <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Impossible de se connecter au chat</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
                 <p>Aucun message pour le moment.</p>
                 <p>Commencez la discussion en envoyant un message !</p>
@@ -480,204 +504,189 @@ function ChatPageContent() {
                                   (modifié)
                                 </span>
                               )}
-                            </>
-                          )}
-                          
-                          {/* Réactions style Telegram - directement sur le message */}
-                          {message.reactions && Object.keys(message.reactions).length > 0 && (() => {
-                            // Grouper les réactions par emoji et compter
-                            const reactionGroups: { [emoji: string]: number } = {};
-                            Object.values(message.reactions).forEach((emoji) => {
-                              reactionGroups[emoji] = (reactionGroups[emoji] || 0) + 1;
-                            });
-                            
-                            return (
-                              <div className="message-reactions-telegram" style={{
-                                display: 'flex',
-                                gap: '4px',
-                                marginTop: '6px',
-                                flexWrap: 'wrap',
-                                alignItems: 'center'
-                              }}>
-                                {Object.entries(reactionGroups).map(([emoji, count]) => {
-                                  const hasUserReaction = message.reactions?.[userId] === emoji;
-                                  return (
+                              
+                              {/* Boutons de réaction - à l'intérieur de la bulle avec compteurs */}
+                              {editingMessageId !== message.id && (() => {
+                                // Compter les réactions par emoji
+                                const reactionCounts: { [emoji: string]: number } = {};
+                                if (message.reactions) {
+                                  Object.values(message.reactions).forEach((emoji) => {
+                                    reactionCounts[emoji] = (reactionCounts[emoji] || 0) + 1;
+                                  });
+                                }
+                                
+                                const getReactionCount = (emoji: string) => reactionCounts[emoji] || 0;
+                                const hasUserReaction = (emoji: string) => message.reactions?.[userId] === emoji;
+                                
+                                return (
+                                  <div className="message-reaction-buttons" style={{
+                                    display: 'flex',
+                                    gap: '4px',
+                                    marginTop: '8px',
+                                    opacity: 0.7,
+                                    transition: 'opacity 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                                  >
                                     <button
-                                      key={emoji}
-                                      onClick={() => toggleReaction(message.id, emoji)}
-                                      className="reaction-badge-telegram"
+                                      className="reaction-btn-small"
+                                      onClick={() => toggleReaction(message.id, '👍')}
+                                      title="J'aime"
                                       style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        background: hasUserReaction 
-                                          ? 'rgba(74, 158, 255, 0.25)' 
-                                          : 'rgba(255, 255, 255, 0.1)',
-                                        border: hasUserReaction
-                                          ? '1px solid rgba(74, 158, 255, 0.5)'
-                                          : '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderRadius: '12px',
-                                        padding: '2px 6px',
-                                        fontSize: '13px',
+                                        background: hasUserReaction('👍') ? 'rgba(74, 158, 255, 0.2)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '16px',
+                                        padding: '4px 8px',
                                         cursor: 'pointer',
+                                        fontSize: '14px',
                                         transition: 'all 0.2s',
-                                        color: '#ffffff'
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        minWidth: 'auto',
+                                        flexShrink: 0
                                       }}
                                       onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = hasUserReaction 
-                                          ? 'rgba(74, 158, 255, 0.35)' 
-                                          : 'rgba(255, 255, 255, 0.15)';
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.background = hasUserReaction('👍') 
+                                          ? 'rgba(74, 158, 255, 0.3)' 
+                                          : 'rgba(74, 158, 255, 0.15)';
                                       }}
                                       onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = hasUserReaction 
-                                          ? 'rgba(74, 158, 255, 0.25)' 
-                                          : 'rgba(255, 255, 255, 0.1)';
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.background = hasUserReaction('👍') 
+                                          ? 'rgba(74, 158, 255, 0.2)' 
+                                          : 'transparent';
                                       }}
                                     >
-                                      <span>{emoji}</span>
-                                      <span style={{ 
-                                        fontSize: '12px',
-                                        fontWeight: '500'
-                                      }}>
-                                        {count}
-                                      </span>
+                                      <span>👍</span>
+                                      {getReactionCount('👍') > 0 && (
+                                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                                          {getReactionCount('👍')}
+                                        </span>
+                                      )}
                                     </button>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
+                                    <button
+                                      className="reaction-btn-small"
+                                      onClick={() => toggleReaction(message.id, '❤️')}
+                                      title="J'adore"
+                                      style={{
+                                        background: hasUserReaction('❤️') ? 'rgba(255, 100, 100, 0.2)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '16px',
+                                        padding: '4px 8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        minWidth: 'auto',
+                                        flexShrink: 0
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.background = hasUserReaction('❤️') 
+                                          ? 'rgba(255, 100, 100, 0.3)' 
+                                          : 'rgba(255, 100, 100, 0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.background = hasUserReaction('❤️') 
+                                          ? 'rgba(255, 100, 100, 0.2)' 
+                                          : 'transparent';
+                                      }}
+                                    >
+                                      <span>❤️</span>
+                                      {getReactionCount('❤️') > 0 && (
+                                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                                          {getReactionCount('❤️')}
+                                        </span>
+                                      )}
+                                    </button>
+                                    <button
+                                      className="reaction-btn-small"
+                                      onClick={() => toggleReaction(message.id, '🔥')}
+                                      title="Feu"
+                                      style={{
+                                        background: hasUserReaction('🔥') ? 'rgba(255, 165, 0, 0.2)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '16px',
+                                        padding: '4px 8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        minWidth: 'auto',
+                                        flexShrink: 0
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.background = hasUserReaction('🔥') 
+                                          ? 'rgba(255, 165, 0, 0.3)' 
+                                          : 'rgba(255, 165, 0, 0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.background = hasUserReaction('🔥') 
+                                          ? 'rgba(255, 165, 0, 0.2)' 
+                                          : 'transparent';
+                                      }}
+                                    >
+                                      <span>🔥</span>
+                                      {getReactionCount('🔥') > 0 && (
+                                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                                          {getReactionCount('🔥')}
+                                        </span>
+                                      )}
+                                    </button>
+                                    <button
+                                      className="reaction-btn-small"
+                                      onClick={() => toggleReaction(message.id, '😡')}
+                                      title="Colère"
+                                      style={{
+                                        background: hasUserReaction('😡') ? 'rgba(255, 100, 100, 0.2)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '16px',
+                                        padding: '4px 8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        minWidth: 'auto',
+                                        flexShrink: 0
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.background = hasUserReaction('😡') 
+                                          ? 'rgba(255, 100, 100, 0.3)' 
+                                          : 'rgba(255, 100, 100, 0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.background = hasUserReaction('😡') 
+                                          ? 'rgba(255, 100, 100, 0.2)' 
+                                          : 'transparent';
+                                      }}
+                                    >
+                                      <span>😡</span>
+                                      {getReactionCount('😡') > 0 && (
+                                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                                          {getReactionCount('😡')}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          )}
                         </div>
-                        {/* Boutons de réaction - affichés au survol ou en bas */}
-                        {editingMessageId !== message.id && (
-                          <div className="message-reaction-buttons" style={{
-                            display: 'flex',
-                            gap: '4px',
-                            marginTop: '4px',
-                            opacity: 0.7,
-                            transition: 'opacity 0.2s'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-                          >
-                            <button
-                              className="reaction-btn-small"
-                              onClick={() => toggleReaction(message.id, '👍')}
-                              title="J'aime"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '50%',
-                                padding: '4px',
-                                cursor: 'pointer',
-                                fontSize: '18px',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '28px',
-                                height: '28px'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.2)';
-                                e.currentTarget.style.background = 'rgba(74, 158, 255, 0.2)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              👍
-                            </button>
-                            <button
-                              className="reaction-btn-small"
-                              onClick={() => toggleReaction(message.id, '❤️')}
-                              title="J'adore"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '50%',
-                                padding: '4px',
-                                cursor: 'pointer',
-                                fontSize: '18px',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '28px',
-                                height: '28px'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.2)';
-                                e.currentTarget.style.background = 'rgba(255, 100, 100, 0.2)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              ❤️
-                            </button>
-                            <button
-                              className="reaction-btn-small"
-                              onClick={() => toggleReaction(message.id, '🔥')}
-                              title="Feu"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '50%',
-                                padding: '4px',
-                                cursor: 'pointer',
-                                fontSize: '18px',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '28px',
-                                height: '28px'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.2)';
-                                e.currentTarget.style.background = 'rgba(255, 165, 0, 0.2)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              🔥
-                            </button>
-                            <button
-                              className="reaction-btn-small"
-                              onClick={() => toggleReaction(message.id, '😡')}
-                              title="Colère"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '50%',
-                                padding: '4px',
-                                cursor: 'pointer',
-                                fontSize: '18px',
-                                transition: 'transform 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '28px',
-                                height: '28px'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.2)';
-                                e.currentTarget.style.background = 'rgba(255, 100, 100, 0.2)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                            >
-                              😡
-                            </button>
-                          </div>
-                        )}
                         {isOwn && editingMessageId !== message.id && (
                           <div className="message-actions">
                             <button
