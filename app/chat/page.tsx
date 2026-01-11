@@ -272,15 +272,13 @@ function ChatPageContent() {
         <a href="/canaldiscussion" className="leave-btn">
           ← Retour
         </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', top: '12px', right: '20px', flexDirection: 'row-reverse' }}>
-          <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
-            connectionStatus === 'online' ? '🟢 Connecté' :
-            connectionStatus === 'connecting' ? '🟡 Connexion...' :
-            '🔴 Hors ligne'
-          } />
-        </div>
         <div className="header-content-wrapper">
-          <div className="wallet-header-top">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
+            <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
+              connectionStatus === 'online' ? '🟢 Connecté' :
+              connectionStatus === 'connecting' ? '🟡 Connexion...' :
+              '🔴 Hors ligne'
+            } />
             <Wallet userId={userId} username={username} />
           </div>
           <h1>
