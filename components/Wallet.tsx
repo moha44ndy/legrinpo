@@ -44,15 +44,15 @@ export default function Wallet({ userId, username }: WalletProps) {
   }
 
   return (
-    <div className="wallet-container">
+    <div className="wallet-container-compact" style={{ position: 'relative' }}>
       <div 
-        className="wallet-header"
+        className="wallet-header-compact"
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ cursor: 'pointer' }}
+        title="Cliquez pour voir les détails"
       >
-        <span className="wallet-icon">💰</span>
-        <span className="wallet-balance">{balance.toFixed(3)} FCFA</span>
-        <span className="wallet-toggle">{isExpanded ? '▼' : '▲'}</span>
+        <span className="wallet-icon-compact">💰</span>
+        <span className="wallet-balance-compact">{balance.toFixed(2)} FCFA</span>
       </div>
       
       {isExpanded && wallet && (
