@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { randomUUID } from 'crypto';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,12 +73,31 @@ export async function POST(request: NextRequest) {
 
     const userId = (result as any).insertId;
 
-    // Créer le portefeuille pour l'utilisateur
+    // Créer le portefeuille pour l'utilisateur dans MySQL
     await query(
       `INSERT INTO wallets (user_id, balance, total_earned) 
        VALUES (?, 0, 0)`,
       [userId]
     );
+
+    // Créer le portefeuille dans Firestore avec l'uid comme clé
+    if (db) {
+      try {
+        const walletRef = doc(db, 'wallets', uid);
+        await setDoc(walletRef, {
+          userId: uid,
+          balance: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        console.log('Portefeuille Firestore créé pour uid:', uid);
+      } catch (firestoreError: any) {
+        console.error('Erreur lors de la création du portefeuille Firestore:', firestoreError);
+        // Ne pas bloquer l'inscription si Firestore échoue
+      }
+    }
 
     // Retourner les informations de l'utilisateur (sans le mot de passe)
     const user = await query(

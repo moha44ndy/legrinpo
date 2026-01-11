@@ -21,8 +21,38 @@ function ChatPageContent() {
   const roomPassword = searchParams.get('password') || undefined;
 
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
-  // Utiliser uid de userProfile ou user, ou générer un ID temporaire
-  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : `user_${Date.now()}`);
+  // Utiliser uid de userProfile ou user (priorité à uid pour la persistance du wallet)
+  // Si pas d'uid, utiliser mysql_id comme fallback, mais éviter les IDs temporaires
+  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : null);
+  
+  // Si pas de userId valide, ne pas afficher le chat
+  if (!userId) {
+    return (
+      <main className="chat-main-container" style={{ padding: 40, color: '#ffffff', textAlign: 'center', background: '#0a0e27' }}>
+        <div className="error-message" style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>🔐 Authentification requise</h2>
+          <p style={{ margin: '20px 0' }}>
+            Vous devez être connecté pour accéder au chat.
+          </p>
+          <a
+            href="/canaldiscussion"
+            style={{
+              background: '#4a9eff',
+              color: '#ffffff',
+              padding: '12px 25px',
+              borderRadius: '20px',
+              textDecoration: 'none',
+              fontWeight: 600,
+              display: 'inline-block',
+              marginTop: '20px',
+            }}
+          >
+            Retour aux Discussions
+          </a>
+        </div>
+      </main>
+    );
+  }
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);

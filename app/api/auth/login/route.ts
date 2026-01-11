@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +55,33 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 jours
     });
+
+    // S'assurer que le wallet existe dans Firestore (pour la persistance)
+    if (db && user.uid) {
+      try {
+        const walletRef = doc(db, 'wallets', user.uid);
+        const walletSnap = await getDoc(walletRef);
+        
+        if (!walletSnap.exists()) {
+          // Créer le wallet dans Firestore s'il n'existe pas
+          await setDoc(walletRef, {
+            userId: user.uid,
+            balance: 0,
+            totalEarned: 0,
+            totalSpent: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+          console.log('Portefeuille Firestore créé pour uid:', user.uid);
+        } else {
+          // Le wallet existe déjà, c'est bon
+          console.log('Portefeuille Firestore existant trouvé pour uid:', user.uid);
+        }
+      } catch (firestoreError: any) {
+        console.error('Erreur lors de la vérification/création du portefeuille Firestore:', firestoreError);
+        // Ne pas bloquer la connexion si Firestore échoue
+      }
+    }
 
     // Retourner les informations de l'utilisateur (sans le mot de passe)
     return NextResponse.json({

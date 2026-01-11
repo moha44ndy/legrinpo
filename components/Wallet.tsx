@@ -57,10 +57,6 @@ export default function Wallet({ userId, username }: WalletProps) {
       
       {isExpanded && wallet && (
         <div className="wallet-details">
-          <div className="wallet-stat">
-            <span className="wallet-stat-label">Total gagné:</span>
-            <span className="wallet-stat-value">{wallet.totalEarned.toFixed(2)} FCFA</span>
-          </div>
           <button 
             className="wallet-refresh-btn"
             onClick={(e) => {
