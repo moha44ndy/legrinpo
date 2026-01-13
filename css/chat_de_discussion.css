@@ -811,22 +811,19 @@
 
         /* Styles pour les boutons d'action (modifier et supprimer) */
         .message-actions {
-            display: flex;
+            display: none;
             gap: 6px;
             align-items: center;
-            opacity: 0;
-            transition: opacity 0.2s ease;
             margin-top: 4px;
         }
 
         .message:hover .message-actions {
-            opacity: 1;
+            display: flex;
         }
 
-        .edit-message-btn,
-        .delete-message-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .edit-message-btn {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.3);
             border-radius: 8px;
             padding: 6px 10px;
             cursor: pointer;
@@ -838,22 +835,42 @@
             width: 32px;
             height: 32px;
             -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            color: #3b82f6;
+        }
+
+        .delete-message-btn {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
+            color: #ef4444;
         }
 
         .edit-message-btn:hover {
-            background: rgba(74, 158, 255, 0.2);
-            border-color: rgba(74, 158, 255, 0.4);
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.6);
             transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(74, 158, 255, 0.3);
+            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
         }
 
         .delete-message-btn:hover {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.6);
             transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 2px 12px rgba(239, 68, 68, 0.4);
+            color: #f87171;
         }
 
         .edit-message-btn:active,
