@@ -566,8 +566,58 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .header-top {
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+    }
+
     .header-title {
+        order: 1;
         font-size: 24px;
+        width: 100%;
+        margin-bottom: 4px;
+        position: relative;
+        padding-right: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-actions {
+        order: 2;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .header-actions > div {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .header-actions .header-btn:last-child {
+        position: absolute;
+        right: 16px;
+        top: 0;
+        z-index: 10;
+    }
+
+    .menu-btn,
+    .new-chat-btn {
+        position: absolute;
+        top: 12px;
+    }
+
+    .menu-btn {
+        left: 16px;
+    }
+
+    .new-chat-btn {
+        left: 60px;
     }
     
     .chat-item {
@@ -613,8 +663,58 @@
 }
 
 @media (max-width: 480px) {
+    .header-top {
+        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        position: relative;
+    }
+
     .header-title {
+        order: 1;
         font-size: 20px;
+        width: 100%;
+        margin-bottom: 4px;
+        position: relative;
+        padding-right: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-actions {
+        order: 2;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .header-actions > div {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .header-actions .header-btn:last-child {
+        position: absolute;
+        right: 12px;
+        top: 0;
+        z-index: 10;
+    }
+
+    .menu-btn,
+    .new-chat-btn {
+        position: absolute;
+        top: 10px;
+    }
+
+    .menu-btn {
+        left: 12px;
+    }
+
+    .new-chat-btn {
+        left: 56px;
     }
     
     .filter-btn {

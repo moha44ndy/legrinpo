@@ -19,17 +19,18 @@ export default function VoiceRecorder({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasStartedRef = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsRecording(false);
+  };
 
   const startRecording = async () => {
     try {
@@ -75,16 +76,23 @@ export default function VoiceRecorder({
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+  useEffect(() => {
+    // Démarrer l'enregistrement automatiquement au montage
+    if (!hasStartedRef.current) {
+      hasStartedRef.current = true;
+      startRecording();
     }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsRecording(false);
-  };
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -111,45 +119,25 @@ export default function VoiceRecorder({
       {error && <div className="voice-recorder-error">{error}</div>}
       
       <div className="voice-recorder-controls">
-        {!isRecording ? (
-          <>
-            <button
-              type="button"
-              className="voice-recorder-btn start"
-              onClick={startRecording}
-            >
-              🎤 Enregistrer
-            </button>
-            <button
-              type="button"
-              className="voice-recorder-btn cancel"
-              onClick={onCancel}
-            >
-              Annuler
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="voice-recorder-timer">
-              <span className="recording-indicator">🔴</span>
-              <span>{formatTime(duration)} / {formatTime(maxDuration)}</span>
-            </div>
-            <button
-              type="button"
-              className="voice-recorder-btn stop"
-              onClick={stopRecording}
-            >
-              ⏹️ Arrêter
-            </button>
-            <button
-              type="button"
-              className="voice-recorder-btn cancel"
-              onClick={cancelRecording}
-            >
-              Annuler
-            </button>
-          </>
-        )}
+        <div className="voice-recorder-timer">
+          <span className="recording-indicator">🔴</span>
+          <span>{formatTime(duration)} / {formatTime(maxDuration)}</span>
+        </div>
+        <button
+          type="button"
+          className="voice-recorder-btn stop"
+          onClick={stopRecording}
+          disabled={!isRecording}
+        >
+          ⏹️ Arrêter
+        </button>
+        <button
+          type="button"
+          className="voice-recorder-btn cancel"
+          onClick={cancelRecording}
+        >
+          Annuler
+        </button>
       </div>
     </div>
   );

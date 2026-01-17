@@ -25,6 +25,97 @@ function ChatPageContent() {
   // Si pas d'uid, utiliser mysql_id comme fallback, mais éviter les IDs temporaires
   const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : null);
   
+  // Tous les hooks doivent être déclarés avant tout return conditionnel
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [clickedMessageId, setClickedMessageId] = useState<string | null>(null);
+  const [messageMenuPosition, setMessageMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageMenuRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  
+  const isPrivateRoom = !!roomPassword;
+  const isPublicRoom = roomId?.startsWith('public_');
+  
+  // Noms des discussions publiques
+  const getPublicRoomName = (roomId: string | null) => {
+    if (!roomId) return 'Discussion';
+    const roomNames: { [key: string]: string } = {
+      'public_aes': 'AES - Alliance des États du Sahel',
+      'public_cedeao': 'CEDEAO - Communauté Économique des États de l\'Afrique de l\'Ouest',
+      'public_uemoa': 'UEMOA - Union Économique et Monétaire Ouest Africaine',
+      'public_autres': 'Globale Organisation'
+    };
+    return roomNames[roomId] || 'Discussion';
+  };
+
+  // useChat doit être appelé avant tout return conditionnel
+  const {
+    messages,
+    isConnected,
+    connectionStatus,
+    passwordVerified,
+    sendMessage,
+    editMessage,
+    deleteMessage,
+    toggleReaction,
+    messagesEndRef,
+    scrollToBottom,
+  } = useChat({
+    roomId: roomId || '',
+    roomPassword,
+    username,
+    userId: userId || '', // Passer une chaîne vide si userId est null
+    isPrivateRoom,
+  });
+  
+  // Tous les useEffect doivent être appelés avant tout return conditionnel
+  useEffect(() => {
+    const unsubscribe = subscribeToToasts((newToasts) => {
+      setToasts(newToasts);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!roomId) {
+      router.push('/canaldiscussion');
+    }
+  }, [roomId, router]);
+
+  // Fermer le menu contextuel si on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (messageMenuRef.current && !messageMenuRef.current.contains(event.target as Node)) {
+        setClickedMessageId(null);
+        setMessageMenuPosition(null);
+      }
+    };
+
+    if (clickedMessageId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      // Nettoyer le timer si le composant est démonté
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, [clickedMessageId]);
+  
   // Si pas de userId valide, ne pas afficher le chat
   if (!userId) {
     return (
@@ -53,64 +144,6 @@ function ChatPageContent() {
       </main>
     );
   }
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const isPrivateRoom = !!roomPassword;
-  const isPublicRoom = roomId?.startsWith('public_');
-  
-  // Noms des discussions publiques
-  const getPublicRoomName = (roomId: string | null) => {
-    if (!roomId) return 'Discussion';
-    const roomNames: { [key: string]: string } = {
-      'public_aes': 'AES - Alliance des États du Sahel',
-      'public_cedeao': 'CEDEAO - Communauté Économique des États de l\'Afrique de l\'Ouest',
-      'public_uemoa': 'UEMOA - Union Économique et Monétaire Ouest Africaine',
-      'public_autres': 'Globale Organisation'
-    };
-    return roomNames[roomId] || 'Discussion';
-  };
-
-  const {
-    messages,
-    isConnected,
-    connectionStatus,
-    passwordVerified,
-    sendMessage,
-    editMessage,
-    deleteMessage,
-    toggleReaction,
-    messagesEndRef,
-    scrollToBottom,
-  } = useChat({
-    roomId: roomId || '',
-    roomPassword,
-    username,
-    userId,
-    isPrivateRoom,
-  });
-
-  useEffect(() => {
-    const unsubscribe = subscribeToToasts((newToasts) => {
-      setToasts(newToasts);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!roomId) {
-      router.push('/canaldiscussion');
-    }
-  }, [roomId, router]);
 
   const handleSendMessage = async () => {
     // Le message doit avoir au moins du texte, des fichiers ou un audio
@@ -239,8 +272,103 @@ function ChatPageContent() {
   const handleDelete = (messageId: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
       deleteMessage(messageId);
+      setClickedMessageId(null);
+      setMessageMenuPosition(null);
     }
   };
+
+  const openMessageMenu = (messageId: string, x: number, y: number) => {
+    setClickedMessageId(messageId);
+    // Positionner le menu à la position du clic, avec un décalage pour centrer le menu
+    const menuWidth = 200; // Largeur approximative du menu
+    const adjustedX = Math.max(10, Math.min(x - (menuWidth / 2), window.innerWidth - menuWidth - 10));
+    
+    setMessageMenuPosition({
+      x: adjustedX,
+      y: y - 10,
+    });
+  };
+
+  const handleContextMenu = (messageId: string, event: React.MouseEvent) => {
+    // Ne pas ouvrir le menu si on clique sur les boutons de réaction existants
+    if ((event.target as HTMLElement).closest('.message-reaction-buttons')) {
+      return;
+    }
+    
+    event.preventDefault(); // Empêcher le menu contextuel par défaut du navigateur
+    event.stopPropagation();
+    
+    // Utiliser la position du clic plutôt que le centre du message
+    openMessageMenu(messageId, event.clientX, event.clientY);
+  };
+
+  const handleTouchStart = (messageId: string, event: React.TouchEvent) => {
+    // Ne pas ouvrir le menu si on touche les boutons de réaction existants
+    if ((event.target as HTMLElement).closest('.message-reaction-buttons')) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartPositionRef.current = { x: touch.clientX, y: touch.clientY };
+
+    // Démarrer le timer pour le long press (500ms)
+    longPressTimerRef.current = setTimeout(() => {
+      // Utiliser la position du touch plutôt que le centre du message
+      openMessageMenu(messageId, touch.clientX, touch.clientY);
+      
+      // Vibrer si supporté (mobile)
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    // Annuler le timer si l'utilisateur relève le doigt avant 500ms
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPositionRef.current = null;
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    // Annuler le long press si l'utilisateur bouge trop
+    if (touchStartPositionRef.current && longPressTimerRef.current) {
+      const touch = event.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartPositionRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPositionRef.current.y);
+      
+      // Si le mouvement est supérieur à 10px, annuler
+      if (deltaX > 10 || deltaY > 10) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+    }
+  };
+
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast('Texte copié dans le presse-papiers', 'success');
+    setClickedMessageId(null);
+    setMessageMenuPosition(null);
+  };
+
+  const handleReply = (message: any) => {
+    // Préremplir le champ de saisie avec une mention
+    setMessageInput(`@${message.username} `);
+    // Focus sur l'input
+    setTimeout(() => {
+      const input = document.querySelector('.message-input') as HTMLInputElement;
+      if (input) input.focus();
+    }, 100);
+    setClickedMessageId(null);
+    setMessageMenuPosition(null);
+  };
+
+
 
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('fr-FR', {
@@ -262,6 +390,19 @@ function ChatPageContent() {
     const currentDate = new Date(currentMessage.timestamp).toDateString();
     const previousDate = new Date(previousMessage.timestamp).toDateString();
     return currentDate !== previousDate;
+  };
+
+  const shouldShowMessageHeader = (currentMessage: any, nextMessage: any) => {
+    // Toujours afficher le header si c'est le dernier message
+    if (!nextMessage) return true;
+    // Afficher le header si le message suivant est d'un autre utilisateur
+    if (currentMessage.userId !== nextMessage.userId) return true;
+    // Afficher le header si le message suivant a une date différente (séparateur de date)
+    const currentDate = new Date(currentMessage.timestamp).toDateString();
+    const nextDate = new Date(nextMessage.timestamp).toDateString();
+    if (currentDate !== nextDate) return true;
+    // Sinon, ne pas afficher le header
+    return false;
   };
 
   if (!roomId) {
@@ -355,6 +496,11 @@ function ChatPageContent() {
               messages.map((message, index) => {
                 const isOwn = message.userId === userId;
                 const showDate = shouldShowDateSeparator(message, messages[index - 1]);
+                const nextMessage = messages[index + 1];
+                const showHeader = shouldShowMessageHeader(message, nextMessage);
+                const previousMessage = messages[index - 1];
+                // Réduire l'espace si le message suivant est de la même personne (même pour le premier message de la série)
+                const isConsecutive = nextMessage && nextMessage.userId === message.userId && !shouldShowDateSeparator(nextMessage, message);
 
                 return (
                   <div key={message.id}>
@@ -365,8 +511,15 @@ function ChatPageContent() {
                         <div className="date-separator-line" />
                       </div>
                     )}
-                    <div className={`message ${isOwn ? 'own' : ''} ${message.isArtist ? 'artist' : ''}`}>
-                      <div className="message-header">
+                    <div 
+                      className={`message ${isOwn ? 'own' : ''} ${message.isArtist ? 'artist' : ''} ${clickedMessageId === message.id ? 'clicked' : ''} ${isConsecutive ? 'consecutive' : ''}`}
+                      onContextMenu={(e) => handleContextMenu(message.id, e)}
+                      onTouchStart={(e) => handleTouchStart(message.id, e)}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchMove={handleTouchMove}
+                      style={{ position: 'relative', userSelect: 'none' }}
+                    >
+                      <div className={`message-header ${showHeader ? '' : 'message-header-hidden'}`}>
                         <div className="user-avatar">
                           <div className="avatar-initial">
                             {message.username.charAt(0).toUpperCase()}
@@ -377,7 +530,6 @@ function ChatPageContent() {
                             {message.username}
                             {message.isArtist && ' 🎵'}
                           </div>
-                          <div className="message-time">{formatTime(message.timestamp)}</div>
                         </div>
                       </div>
                       <div className="message-content">
@@ -434,14 +586,20 @@ function ChatPageContent() {
                             <>
                               {/* Note vocale */}
                               {message.audio && (
-                                <div className="audio-attachment" style={{ marginBottom: '8px' }}>
-                                  <audio controls style={{ width: '100%', maxWidth: '300px' }}>
+                                <div className="audio-attachment" style={{ 
+                                  marginBottom: '4px'
+                                }}>
+                                  <audio 
+                                    controls 
+                                    style={{ 
+                                      width: '100%',
+                                      maxWidth: '250px',
+                                      height: '32px'
+                                    }}
+                                  >
                                     <source src={message.audio.url} type={message.audio.type} />
                                     Votre navigateur ne supporte pas l'élément audio.
                                   </audio>
-                                  <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '4px' }}>
-                                    🎤 Note vocale
-                                  </div>
                                 </div>
                               )}
                               
@@ -527,11 +685,20 @@ function ChatPageContent() {
                                 <div dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br>') }} />
                               )}
                               
-                              {message.edited && (
-                                <span style={{ fontSize: '0.7rem', opacity: 0.7, marginLeft: '8px' }}>
-                                  (modifié)
-                                </span>
-                              )}
+                              {/* Heure et statut modifié */}
+                              <div className="message-time-container" style={{ 
+                                alignItems: 'center', 
+                                justifyContent: 'flex-end',
+                                gap: '6px',
+                                marginTop: '4px',
+                                fontSize: '0.7rem',
+                                opacity: 0.7
+                              }}>
+                                {message.edited && (
+                                  <span className="message-edited">(modifié)</span>
+                                )}
+                                <span className="message-time">{formatTime(message.timestamp)}</span>
+                              </div>
                               
                               {/* Boutons de réaction - à l'intérieur de la bulle avec compteurs */}
                               {editingMessageId !== message.id && (() => {
@@ -715,31 +882,77 @@ function ChatPageContent() {
                             </>
                           )}
                         </div>
-                        {isOwn && editingMessageId !== message.id && (
-                          <div className="message-actions">
-                            <button
-                              className="edit-message-btn"
-                              onClick={() => handleEdit(message.id, message.text)}
-                              title="Modifier"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              className="delete-message-btn"
-                              onClick={() => handleDelete(message.id)}
-                              title="Supprimer"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        )}
                       </div>
+                      
+                      {/* Menu contextuel */}
+                      {clickedMessageId === message.id && messageMenuPosition && (
+                        <div 
+                          ref={messageMenuRef}
+                          className="message-context-menu"
+                          style={{
+                            position: 'fixed',
+                            left: `${messageMenuPosition.x}px`,
+                            top: `${Math.max(10, messageMenuPosition.y - 140)}px`,
+                            zIndex: 10001,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Menu contextuel */}
+                          <div className="context-menu">
+                            <button
+                              className="context-menu-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReply(message);
+                              }}
+                            >
+                              <span>Répondre</span>
+                            </button>
+                            {isOwn && (
+                              <button
+                                className="context-menu-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(message.id, message.text);
+                                  setClickedMessageId(null);
+                                  setMessageMenuPosition(null);
+                                }}
+                              >
+                                <span>Modifier</span>
+                              </button>
+                            )}
+                            <button
+                              className="context-menu-item"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyText(message.text || '');
+                              }}
+                            >
+                              <span>Copier le texte</span>
+                            </button>
+                            {isOwn && (
+                              <button
+                                className="context-menu-item context-menu-item-danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(message.id);
+                                }}
+                              >
+                                <span>Supprimer</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })
             )}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} style={{ paddingBottom: '40px', minHeight: '40px' }} />
           </div>
         </div>
 
@@ -832,11 +1045,15 @@ function ChatPageContent() {
                 borderRadius: '6px',
                 color: '#ff6b6b',
                 cursor: 'pointer',
-                fontSize: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
               title="Enregistrer une note vocale (max 1 minute)"
             >
-              🎤
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
             </button>
             
             <input
@@ -863,8 +1080,21 @@ function ChatPageContent() {
               className="send-btn"
               onClick={handleSendMessage}
               disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !isRecordingVoice)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '14px',
+                minWidth: '48px',
+              }}
             >
-              {uploading ? 'Envoi...' : 'Envoyer'}
+              {uploading ? (
+                <span style={{ fontSize: '0.9rem' }}>Envoi...</span>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              )}
             </button>
           </div>
         </div>
