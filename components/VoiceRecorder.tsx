@@ -37,19 +37,110 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const volumeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isRecordingRef = useRef(false); // Ref pour vérifier l'état actuel dans les callbacks
 
   const stopRecording = async () => {
-    // Si l'enregistrement est déjà arrêté, reprendre l'enregistrement
+    // Si l'enregistrement est déjà arrêté/en pause, reprendre l'enregistrement
     if (isStopped && !isRecording) {
       // Reprendre l'enregistrement
-      await startRecording();
+      if (mediaRecorderRef.current && typeof mediaRecorderRef.current.resume === 'function') {
+        // Si resume() est disponible, l'utiliser
+        try {
+          if (mediaRecorderRef.current.state === 'paused') {
+            mediaRecorderRef.current.resume();
+            setIsRecording(true);
+            isRecordingRef.current = true;
+            setIsStopped(false);
+            
+            // Redémarrer les intervalles
+            intervalRef.current = setInterval(() => {
+              setDuration((prev) => {
+                if (prev >= maxDuration) {
+                  return maxDuration;
+                }
+                const newDuration = prev + 1;
+                if (newDuration >= maxDuration) {
+                  const currentInterval = intervalRef.current;
+                  const currentVolumeInterval = volumeIntervalRef.current;
+                  if (currentInterval) {
+                    clearInterval(currentInterval);
+                    intervalRef.current = null;
+                  }
+                  if (currentVolumeInterval) {
+                    clearInterval(currentVolumeInterval);
+                    volumeIntervalRef.current = null;
+                  }
+                  setTimeout(() => {
+                    stopRecording();
+                  }, 0);
+                  return maxDuration;
+                }
+                return newDuration;
+              });
+            }, 1000);
+            
+            // Redémarrer l'analyse du volume
+            if (audioContextRef.current && streamRef.current) {
+              try {
+                const analyser = audioContextRef.current.createAnalyser();
+                const microphone = audioContextRef.current.createMediaStreamSource(streamRef.current);
+                
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                microphone.connect(analyser);
+                
+                analyserRef.current = analyser;
+                
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const updateVolume = () => {
+                  if (analyserRef.current && mediaRecorderRef.current?.state === 'recording') {
+                    analyserRef.current.getByteFrequencyData(dataArray);
+                    const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+                    const normalizedVolume = Math.min(100, (average / 255) * 100);
+                    setVolumeLevel(normalizedVolume);
+                  } else {
+                    setVolumeLevel(0);
+                  }
+                };
+                
+                volumeIntervalRef.current = setInterval(updateVolume, 50);
+              } catch (err) {
+                console.warn('Impossible de redémarrer l\'analyseur audio:', err);
+              }
+            }
+            return;
+          }
+        } catch (err) {
+          console.error('Erreur lors de la reprise:', err);
+        }
+      }
+      // Sinon, créer un nouveau MediaRecorder
+      await startRecording(true);
       return;
     }
     
-    // Sinon, arrêter l'enregistrement
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+    // Sinon, mettre en pause l'enregistrement
+    if (!mediaRecorderRef.current) {
+      setIsRecording(false);
+      isRecordingRef.current = false;
+      setIsStopped(true);
+      return;
     }
+    
+    // Vérifier l'état du MediaRecorder
+    const state = mediaRecorderRef.current.state;
+    if (state === 'inactive') {
+      setIsRecording(false);
+      isRecordingRef.current = false;
+      setIsStopped(true);
+      return;
+    }
+    
+    // IMPORTANT: La plupart des navigateurs ne supportent pas pause()/resume() pour MediaRecorder
+    // On doit donc utiliser stop() pour vraiment arrêter l'enregistrement
+    // Mais on doit empêcher l'événement onstop de créer un blob quand on met en pause
+    
+    // IMPORTANT: Arrêter les intervalles EN PREMIER pour empêcher le timer de continuer
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -58,12 +149,39 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       clearInterval(volumeIntervalRef.current);
       volumeIntervalRef.current = null;
     }
-    // Ne pas fermer l'audio context pour pouvoir reprendre
-    // On garde le stream actif aussi
+    
+    // Mettre à jour l'état AVANT d'arrêter pour empêcher la collecte de nouvelles données
+    setIsRecording(false);
+    isRecordingRef.current = false; // Mettre à jour la ref immédiatement
+    setIsStopped(true);
+    
+    // Arrêter le MediaRecorder seulement s'il existe et est actif
+    if (mediaRecorderRef.current) {
+      try {
+        // Sauvegarder le handler onstop actuel
+        const originalOnStop = mediaRecorderRef.current.onstop;
+        
+        // Désactiver temporairement onstop pour éviter qu'il crée un blob
+        mediaRecorderRef.current.onstop = null;
+        
+        // Arrêter le MediaRecorder - cela arrêtera vraiment l'enregistrement
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+        
+        // IMPORTANT: Ne pas vider les chunks audio - on les garde pour pouvoir reprendre
+        // audioChunksRef.current reste intact
+        
+        // Le MediaRecorder sera recréé quand on reprendra
+        mediaRecorderRef.current = null;
+      } catch (err) {
+        console.error('Erreur lors de l\'arrêt du MediaRecorder:', err);
+      }
+    }
+    
+    // Mettre à jour les états
     analyserRef.current = null;
     setVolumeLevel(0);
-    setIsRecording(false);
-    setIsStopped(true);
   };
 
   const stopAndGetAudio = async (): Promise<Blob | null> => {
@@ -105,6 +223,7 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       analyserRef.current = null;
       setVolumeLevel(0);
       setIsRecording(false);
+      isRecordingRef.current = false;
       setIsStopped(true);
     });
   };
@@ -114,7 +233,7 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
     isRecording,
   }));
 
-  const startRecording = async () => {
+  const startRecording = async (isResuming = false) => {
     try {
       setError(null);
       
@@ -126,7 +245,6 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       }
       
       // Si on reprend, ne pas réinitialiser les chunks audio
-      const isResuming = isStopped && audioChunksRef.current.length > 0;
       if (!isResuming) {
         audioChunksRef.current = [];
       }
@@ -136,7 +254,8 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       });
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        // Ne collecter des données que si l'enregistrement est actif
+        if (event.data.size > 0 && isRecording) {
           audioChunksRef.current.push(event.data);
         }
       };
@@ -151,6 +270,7 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Collecter des données toutes les secondes
       setIsRecording(true);
+      isRecordingRef.current = true; // Mettre à jour la ref immédiatement
       setIsStopped(false);
       
       // Si on reprend, ne pas réinitialiser la durée
@@ -195,11 +315,47 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
 
       // Démarrer le compteur
       intervalRef.current = setInterval(() => {
-        setDuration((prev) => {
-          const newDuration = prev + 1;
-          if (newDuration >= maxDuration) {
-            stopRecording();
+        // Vérifier si l'enregistrement est toujours actif en utilisant la ref
+        if (!isRecordingRef.current) {
+          // Si l'enregistrement n'est plus actif, arrêter le timer
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
+          return;
+        }
+        
+        setDuration((prev) => {
+          // Vérifier à nouveau l'état avant d'incrémenter
+          if (prev >= maxDuration) {
+            return maxDuration; // Ne pas dépasser la durée maximale
+          }
+          
+          const newDuration = prev + 1;
+          
+          // Arrêter l'enregistrement si on atteint la durée maximale
+          if (newDuration >= maxDuration) {
+            // Arrêter les intervalles immédiatement AVANT d'appeler stopRecording
+            const currentInterval = intervalRef.current;
+            const currentVolumeInterval = volumeIntervalRef.current;
+            
+            if (currentInterval) {
+              clearInterval(currentInterval);
+              intervalRef.current = null;
+            }
+            if (currentVolumeInterval) {
+              clearInterval(currentVolumeInterval);
+              volumeIntervalRef.current = null;
+            }
+            
+            // Arrêter l'enregistrement de manière asynchrone pour éviter les problèmes de timing
+            setTimeout(() => {
+              stopRecording();
+            }, 0);
+            
+            return maxDuration; // Ne pas dépasser la durée maximale
+          }
+          
           return newDuration;
         });
       }, 1000);
@@ -211,34 +367,68 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
 
   useEffect(() => {
     // Démarrer l'enregistrement automatiquement au montage si autoStart est true
+    // On vérifie hasStartedRef pour éviter de démarrer plusieurs fois
     if (autoStart && !hasStartedRef.current) {
       hasStartedRef.current = true;
       startRecording();
     }
 
     return () => {
+      // Nettoyer lors du démontage
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       if (volumeIntervalRef.current) {
         clearInterval(volumeIntervalRef.current);
+        volumeIntervalRef.current = null;
       }
       if (audioContextRef.current) {
         audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
+      // Réinitialiser hasStartedRef au démontage pour permettre un nouveau démarrage au prochain montage
+      hasStartedRef.current = false;
     };
   }, [autoStart]);
 
 
   const cancelRecording = () => {
-    // Arrêter l'enregistrement si en cours
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
+    // IMPORTANT: Marquer comme annulé EN PREMIER pour empêcher le redémarrage automatique
+    hasStartedRef.current = false;
+    
+    // Vider les chunks audio AVANT d'arrêter l'enregistrement pour éviter que l'événement onstop ne crée un blob
+    audioChunksRef.current = [];
+    setRecordedAudio(null);
+    
+    // Arrêter l'enregistrement si en cours (peu importe l'état : recording, paused, ou stopped)
+    // On peut annuler à tout moment, même si l'enregistrement est en pause ou arrêté
+    if (mediaRecorderRef.current) {
+      // Désactiver l'événement onstop pour éviter qu'il ne crée un blob audio
+      mediaRecorderRef.current.onstop = null;
+      
+      // Arrêter l'enregistrement dans tous les cas (recording, paused, etc.)
+      // Même si l'état est 'inactive' (après pause), on nettoie quand même
+      try {
+        const state = mediaRecorderRef.current.state;
+        if (state === 'recording' || state === 'paused') {
+          mediaRecorderRef.current.stop();
+        }
+        // Si l'état est déjà 'inactive' (après pause), on continue le nettoyage
+      } catch (err) {
+        console.warn('Erreur lors de l\'arrêt du MediaRecorder:', err);
+      }
+      mediaRecorderRef.current = null;
     }
-    // Nettoyer les intervalles
+    
+    // Nettoyer les intervalles (peu importe l'état - même si déjà nettoyés après pause)
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -247,26 +437,42 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       clearInterval(volumeIntervalRef.current);
       volumeIntervalRef.current = null;
     }
-    // Fermer l'audio context
+    
+    // Fermer l'audio context (même s'il est resté ouvert après la pause)
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      try {
+        if (audioContextRef.current.state !== 'closed') {
+          audioContextRef.current.close();
+        }
+      } catch (err) {
+        console.warn('Erreur lors de la fermeture de l\'AudioContext:', err);
+      }
       audioContextRef.current = null;
     }
-    // Arrêter le stream audio
+    
+    // Arrêter le stream audio pour libérer le microphone
+    // IMPORTANT: Même si l'enregistrement est en pause, le stream est toujours actif
+    // Il faut donc l'arrêter lors de l'annulation
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        // Arrêter toutes les tracks, même si elles sont 'live' ou 'ended'
+        if (track.readyState === 'live') {
+          track.stop();
+        }
+      });
       streamRef.current = null;
     }
-    // Réinitialiser tous les états
+    
+    // Réinitialiser tous les états à zéro (comme si on n'avait jamais enregistré)
     analyserRef.current = null;
     setVolumeLevel(0);
     setIsRecording(false);
+    isRecordingRef.current = false;
     setIsStopped(false);
     setDuration(0);
-    audioChunksRef.current = [];
-    setRecordedAudio(null);
-    hasStartedRef.current = false; // Réinitialiser pour éviter le redémarrage automatique
-    // Appeler le callback d'annulation pour notifier le parent
+    
+    // Appeler le callback d'annulation pour notifier le parent (cela démontera le composant)
+    // On appelle onCancel() en dernier pour que le composant se démonte immédiatement
     onCancel();
   };
 

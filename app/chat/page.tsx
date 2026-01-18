@@ -279,10 +279,19 @@ function ChatPageContent() {
   };
 
   const handleVoiceRecordingCancel = () => {
+    // Réinitialiser complètement tous les états comme si on n'avait jamais appuyé sur le bouton
+    // IMPORTANT: Mettre isRecordingVoice à false EN PREMIER pour démonter le composant immédiatement
     setIsRecordingVoice(false);
     setRecordedAudioBlob(null);
     setIsHoldingMic(false);
     setShouldCancelRecording(false);
+    holdStartPositionRef.current = null;
+    
+    // Retirer les écouteurs globaux s'ils sont encore actifs
+    document.removeEventListener('mousemove', handleGlobalMove);
+    document.removeEventListener('mouseup', handleGlobalUp);
+    document.removeEventListener('touchmove', handleGlobalMove);
+    document.removeEventListener('touchend', handleGlobalUp);
   };
 
   const handleMicButtonDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -1132,9 +1141,16 @@ function ChatPageContent() {
             </div>
           )}
           
-          {/* Enregistrement vocal */}
+          {/* Enregistrement vocal - Positionné en haut à droite */}
           {(isRecordingVoice || recordedAudioBlob) && (
-            <div style={{ padding: '8px', background: 'rgba(255, 107, 107, 0.1)', borderBottom: '1px solid rgba(255, 107, 107, 0.2)' }}>
+            <div style={{ 
+              position: 'fixed',
+              bottom: '80px',
+              right: '20px',
+              zIndex: 1000,
+              maxWidth: '300px',
+              minWidth: '200px'
+            }}>
               <VoiceRecorder
                 ref={voiceRecorderRef}
                 onRecordingComplete={handleVoiceRecordingComplete}

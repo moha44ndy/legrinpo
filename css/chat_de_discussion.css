@@ -459,10 +459,9 @@
         .input-container {
             position: fixed;
             bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            right: 0;
             width: 100%;
-            max-width: 1200px;
             z-index: 999;
             padding: 16px 20px;
             background: linear-gradient(180deg, #1a1f3a 0%, #0f1325 100%);
@@ -473,10 +472,24 @@
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
+            box-sizing: border-box;
+        }
+        
+        .input-container > div {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            flex: 1;
+        }
+        
+        .input-container > *:not(div) {
+            flex-shrink: 0;
         }
 
         .message-input {
-            flex: 1;
+            flex: 1 1 auto;
+            min-width: 0;
             padding: 14px 20px;
             border: 1px solid rgba(74, 158, 255, 0.2);
             border-radius: 24px;
@@ -487,7 +500,7 @@
             color: #ffffff;
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
-            color: #ffffff;
+            box-sizing: border-box;
         }
 
         .message-input:focus {
@@ -503,7 +516,10 @@
 
         .send-btn {
             padding: 14px;
-            min-width: 8px;
+            min-width: 48px;
+            max-width: 48px;
+            width: 48px;
+            height: 48px;
             background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
             color: white;
             border: none;
@@ -516,6 +532,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .send-btn:hover {
@@ -609,14 +626,16 @@
                 padding: 12px 10px;
                 gap: 8px;
                 flex-wrap: wrap;
-                left: 50%;
-                transform: translateX(-50%);
+                left: 0;
+                right: 0;
+                transform: none;
             }
 
             .input-container > button {
                 padding: 8px 10px;
                 font-size: 16px;
                 min-width: 40px;
+                flex-shrink: 0;
             }
 
             .message-input {
@@ -699,14 +718,16 @@
             .input-container {
                 padding: 10px 8px;
                 gap: 6px;
-                left: 50%;
-                transform: translateX(-50%);
+                left: 0;
+                right: 0;
+                transform: none;
             }
 
             .input-container > button {
                 padding: 8px;
                 font-size: 14px;
                 min-width: 36px;
+                flex-shrink: 0;
             }
 
             .message-input {
@@ -723,10 +744,14 @@
 
         /* Styles pour les fichiers et notes vocales */
         .voice-recorder {
-            padding: 12px;
-            background: rgba(255, 107, 107, 0.1);
+            padding: 8px 12px;
+            background: rgba(255, 107, 107, 0.15);
             border-radius: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 107, 107, 0.3);
         }
 
         .voice-recorder-error {
@@ -738,16 +763,16 @@
         .voice-recorder-controls {
             display: flex;
             align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            gap: 6px;
+            flex-wrap: nowrap;
         }
 
         .voice-recorder-btn {
-            padding: 8px 16px;
+            padding: 6px 10px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             transition: all 0.2s;
         }
 
@@ -763,12 +788,12 @@
         .voice-recorder-btn.stop {
             background: #4a9eff;
             color: white;
-            padding: 8px;
+            padding: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 40px;
-            min-height: 40px;
+            min-width: 32px;
+            min-height: 32px;
         }
 
         .voice-recorder-btn.stop:hover {
@@ -776,14 +801,25 @@
         }
 
         .voice-recorder-btn.stop svg {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
         }
 
         .voice-recorder-btn.cancel {
             background: rgba(239, 68, 68, 0.2);
             color: #ef4444;
             border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 6px;
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .voice-recorder-btn.cancel svg {
+            width: 16px;
+            height: 16px;
         }
 
         .voice-recorder-btn.cancel:hover {
@@ -794,8 +830,8 @@
         .voice-recorder-timer {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
+            gap: 6px;
+            font-size: 0.75rem;
             color: #ffffff;
         }
 
@@ -813,10 +849,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 120px;
-            max-width: 200px;
-            height: 30px;
-            margin: 0 8px;
+            min-width: 80px;
+            max-width: 120px;
+            height: 24px;
+            margin: 0 4px;
         }
 
         .volume-bars {
@@ -830,12 +866,12 @@
 
         .volume-bar {
             flex: 1;
-            min-width: 3px;
-            max-width: 6px;
+            min-width: 2px;
+            max-width: 4px;
             background: linear-gradient(to top, #4a9eff, #6bb6ff);
             border-radius: 2px;
             transition: height 0.1s ease-out, opacity 0.1s ease-out;
-            min-height: 4px;
+            min-height: 3px;
         }
 
         .selected-files {
