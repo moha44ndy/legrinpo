@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, Suspense, useRef } from 'react';
+import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, FileAttachment } from '@/hooks/useChat';
 import { subscribeToToasts, showToast, closeToast } from '@/utils/toast';
 import { ToastContainer, Toast } from '@/components/Toast';
 import Wallet from '@/components/Wallet';
-import VoiceRecorder from '@/components/VoiceRecorder';
+import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
 import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
 import { v4 as uuidv4 } from 'uuid';
 import '../globals.css';
@@ -32,13 +32,19 @@ function ChatPageContent() {
   const [editText, setEditText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isHoldingMic, setIsHoldingMic] = useState(false);
+  const [shouldCancelRecording, setShouldCancelRecording] = useState(false);
+  const micButtonRef = useRef<HTMLButtonElement>(null);
+  const holdStartPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [clickedMessageId, setClickedMessageId] = useState<string | null>(null);
   const [messageMenuPosition, setMessageMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageMenuRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const voiceRecorderRef = useRef<VoiceRecorderRef>(null);
   
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -147,7 +153,7 @@ function ChatPageContent() {
 
   const handleSendMessage = async () => {
     // Le message doit avoir au moins du texte, des fichiers ou un audio
-    if (!messageInput.trim() && selectedFiles.length === 0 && !isRecordingVoice) return;
+    if (!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob && !isRecordingVoice) return;
     if (!roomId || !userId) return;
 
     setUploading(true);
@@ -156,6 +162,28 @@ function ChatPageContent() {
       const messageId = uuidv4();
       const attachments: FileAttachment[] = [];
       let audioAttachment: FileAttachment | undefined = undefined;
+
+      // Si l'enregistrement est en cours, l'arrêter et obtenir l'audio
+      let audioToUpload = recordedAudioBlob;
+      if (isRecordingVoice && voiceRecorderRef.current) {
+        audioToUpload = await voiceRecorderRef.current.stopAndGetAudio();
+        setIsRecordingVoice(false);
+      }
+
+      // Upload de l'audio enregistré
+      if (audioToUpload) {
+        try {
+          const audioMetadata = await uploadAudio(audioToUpload, roomId, userId, messageId);
+          audioAttachment = {
+            url: audioMetadata.url,
+            name: audioMetadata.name,
+            type: audioMetadata.type,
+            size: audioMetadata.size,
+          };
+        } catch (error: any) {
+          showToast(`Erreur lors de l'upload de la note vocale: ${error.message}`, 'error');
+        }
+      }
 
       // Upload des fichiers sélectionnés
       if (selectedFiles.length > 0) {
@@ -186,6 +214,7 @@ function ChatPageContent() {
       setMessageInput('');
       setSelectedFiles([]);
       setIsRecordingVoice(false);
+      setRecordedAudioBlob(null);
     } catch (error: any) {
       showToast(`Erreur lors de l'envoi du message: ${error.message}`, 'error');
     } finally {
@@ -245,8 +274,99 @@ function ChatPageContent() {
     }
   };
 
+  const handleVoiceRecordingStop = (audioBlob: Blob | null) => {
+    setRecordedAudioBlob(audioBlob);
+  };
+
   const handleVoiceRecordingCancel = () => {
     setIsRecordingVoice(false);
+    setRecordedAudioBlob(null);
+    setIsHoldingMic(false);
+    setShouldCancelRecording(false);
+  };
+
+  const handleMicButtonDown = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isConnected || uploading) return;
+    
+    e.preventDefault();
+    setIsHoldingMic(true);
+    setShouldCancelRecording(false);
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    holdStartPositionRef.current = { x: clientX, y: clientY };
+    
+    // Démarrer l'enregistrement
+    setIsRecordingVoice(true);
+    
+    // Ajouter les écouteurs globaux
+    document.addEventListener('mousemove', handleGlobalMove);
+    document.addEventListener('mouseup', handleGlobalUp);
+    document.addEventListener('touchmove', handleGlobalMove, { passive: false });
+    document.addEventListener('touchend', handleGlobalUp);
+  };
+
+  const handleGlobalMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isHoldingMic || !holdStartPositionRef.current) return;
+    
+    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX) : e.clientX;
+    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY) : e.clientY;
+    
+    if (clientX === undefined || clientY === undefined) return;
+    
+    const deltaY = holdStartPositionRef.current.y - clientY;
+    const deltaX = Math.abs(holdStartPositionRef.current.x - clientX);
+    
+    // Si on glisse vers le haut de plus de 50px, annuler
+    if (deltaY > 50 || deltaX > 100) {
+      setShouldCancelRecording(true);
+    } else {
+      setShouldCancelRecording(false);
+    }
+  }, [isHoldingMic]);
+
+  const handleGlobalUp = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isHoldingMic) return;
+    
+    e.preventDefault();
+    
+    // Retirer les écouteurs globaux
+    document.removeEventListener('mousemove', handleGlobalMove);
+    document.removeEventListener('mouseup', handleGlobalUp);
+    document.removeEventListener('touchmove', handleGlobalMove);
+    document.removeEventListener('touchend', handleGlobalUp);
+    
+    const shouldCancel = shouldCancelRecording;
+    setShouldCancelRecording(false);
+    
+    if (shouldCancel) {
+      // Annuler l'enregistrement complètement
+      // On annule d'abord pour démonter le composant, ce qui empêchera le redémarrage
+      handleVoiceRecordingCancel();
+    } else {
+      // Arrêter l'enregistrement mais garder l'audio
+      if (voiceRecorderRef.current && voiceRecorderRef.current.isRecording) {
+        voiceRecorderRef.current.stopAndGetAudio().then((audioBlob) => {
+          if (audioBlob) {
+            setRecordedAudioBlob(audioBlob);
+          }
+          setIsRecordingVoice(false);
+          setIsHoldingMic(false);
+        });
+      } else {
+        setIsHoldingMic(false);
+      }
+    }
+    
+    holdStartPositionRef.current = null;
+  }, [isHoldingMic, handleVoiceRecordingCancel]);
+
+  const handleMicButtonMove = (e: React.MouseEvent | React.TouchEvent) => {
+    // Cette fonction est maintenant gérée par handleGlobalMove
+  };
+
+  const handleMicButtonUp = (e: React.MouseEvent | React.TouchEvent) => {
+    // Cette fonction est maintenant gérée par handleGlobalUp
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -255,6 +375,16 @@ function ChatPageContent() {
       handleSendMessage();
     }
   };
+
+  // Nettoyer les écouteurs globaux au démontage
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMove);
+      document.removeEventListener('mouseup', handleGlobalUp);
+      document.removeEventListener('touchmove', handleGlobalMove);
+      document.removeEventListener('touchend', handleGlobalUp);
+    };
+  }, [handleGlobalMove, handleGlobalUp]);
 
   const handleEdit = (messageId: string, currentText: string) => {
     setEditingMessageId(messageId);
@@ -1003,12 +1133,15 @@ function ChatPageContent() {
           )}
           
           {/* Enregistrement vocal */}
-          {isRecordingVoice && (
+          {(isRecordingVoice || recordedAudioBlob) && (
             <div style={{ padding: '8px', background: 'rgba(255, 107, 107, 0.1)', borderBottom: '1px solid rgba(255, 107, 107, 0.2)' }}>
               <VoiceRecorder
+                ref={voiceRecorderRef}
                 onRecordingComplete={handleVoiceRecordingComplete}
                 onCancel={handleVoiceRecordingCancel}
+                onStop={handleVoiceRecordingStop}
                 maxDuration={60}
+                autoStart={true}
               />
             </div>
           )}
@@ -1033,29 +1166,6 @@ function ChatPageContent() {
               📎
             </button>
             
-            {/* Bouton pour enregistrer une note vocale */}
-            <button
-              type="button"
-              onClick={() => setIsRecordingVoice(true)}
-              disabled={!isConnected || uploading || isRecordingVoice}
-              style={{
-                padding: '8px 12px',
-                background: 'rgba(255, 107, 107, 0.1)',
-                border: '1px solid rgba(255, 107, 107, 0.3)',
-                borderRadius: '6px',
-                color: '#ff6b6b',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Enregistrer une note vocale (max 1 minute)"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-              </svg>
-            </button>
-            
             <input
               type="file"
               ref={fileInputRef}
@@ -1076,26 +1186,75 @@ function ChatPageContent() {
               style={{ flex: 1 }}
             />
             
-            <button
-              className="send-btn"
-              onClick={handleSendMessage}
-              disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !isRecordingVoice)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '14px',
-                minWidth: '48px',
-              }}
-            >
-              {uploading ? (
-                <span style={{ fontSize: '0.9rem' }}>Envoi...</span>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                </svg>
-              )}
-            </button>
+            {/* Bouton pour enregistrer une note vocale (style WhatsApp) */}
+            {!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob ? (
+              <button
+                ref={micButtonRef}
+                type="button"
+                onMouseDown={handleMicButtonDown}
+                onMouseMove={handleMicButtonMove}
+                onMouseUp={handleMicButtonUp}
+                onMouseLeave={handleMicButtonUp}
+                onTouchStart={handleMicButtonDown}
+                onTouchMove={handleMicButtonMove}
+                onTouchEnd={handleMicButtonUp}
+                disabled={!isConnected || uploading}
+                style={{
+                  padding: '8px 12px',
+                  background: isHoldingMic 
+                    ? (shouldCancelRecording ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 107, 107, 0.3)')
+                    : 'rgba(255, 107, 107, 0.1)',
+                  border: isHoldingMic
+                    ? (shouldCancelRecording ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 107, 107, 0.6)')
+                    : '1px solid rgba(255, 107, 107, 0.3)',
+                  borderRadius: '6px',
+                  color: isHoldingMic && shouldCancelRecording ? '#ef4444' : '#ff6b6b',
+                  cursor: isHoldingMic ? 'grabbing' : 'grab',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                }}
+                title={isHoldingMic 
+                  ? (shouldCancelRecording ? 'Relâchez pour annuler' : 'Relâchez pour arrêter l\'enregistrement')
+                  : 'Maintenez pour enregistrer, glissez vers le haut pour annuler'}
+              >
+                {isHoldingMic && shouldCancelRecording ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2s-2 .9-2 2v8c0 1.1.9 2 2 2zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                )}
+              </button>
+            ) : null}
+            
+            {messageInput.trim() || selectedFiles.length > 0 || recordedAudioBlob ? (
+              <button
+                className="send-btn"
+                onClick={handleSendMessage}
+                disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob && !isRecordingVoice)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '14px',
+                  minWidth: '48px',
+                }}
+              >
+                {uploading ? (
+                  <span style={{ fontSize: '0.9rem' }}>Envoi...</span>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                  </svg>
+                )}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

@@ -580,44 +580,92 @@
         width: 100%;
         margin-bottom: 4px;
         position: relative;
-        padding-right: 50px;
+        padding-left: 0;
+        padding-right: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        text-align: center;
+    }
+
+    .menu-btn,
+    .new-chat-btn {
+        order: 2;
+        position: static;
     }
 
     .header-actions {
-        order: 2;
+        order: 3;
         width: 100%;
         display: flex;
         justify-content: center;
+        position: relative;
     }
 
     .header-actions > div {
         display: flex;
         align-items: center;
         gap: 12px;
+        justify-content: space-between;
+        width: 100%;
+        position: relative;
+        padding-left: 88px;
+    }
+
+    .header-actions > div > .wallet-container-compact,
+    .header-actions > div > .wallet-container {
+        position: absolute;
+        left: 30%;
+        transform: translateX(-50%);
+        top: 0;
+        z-index: 1;
+        font-size: 0.65rem;
+    }
+
+    .header-actions > div > .wallet-container-compact .wallet-header-compact,
+    .header-actions > div > .wallet-container .wallet-header {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+    }
+
+    .header-actions > div > .wallet-container-compact .wallet-balance-compact,
+    .header-actions > div > .wallet-container .wallet-balance {
+        font-size: 0.65rem;
+    }
+
+    .header-actions > div > span {
+        position: static;
+        font-size: 13px;
+        margin-right: 0;
     }
 
     .header-actions .header-btn:last-child {
-        position: absolute;
-        right: 16px;
-        top: 0;
-        z-index: 10;
+        position: static;
+        width: 28px;
+        height: 28px;
+        padding: 4px;
+        margin-left: -12px;
+    }
+
+    .header-actions .header-btn:last-child svg {
+        width: 16px;
+        height: 16px;
     }
 
     .menu-btn,
     .new-chat-btn {
         position: absolute;
-        top: 12px;
+        bottom: 0;
     }
 
     .menu-btn {
         left: 16px;
+        bottom: 0;
     }
 
     .new-chat-btn {
         left: 60px;
+        bottom: 0;
     }
     
     .chat-item {
@@ -677,44 +725,92 @@
         width: 100%;
         margin-bottom: 4px;
         position: relative;
-        padding-right: 50px;
+        padding-left: 0;
+        padding-right: 0;
         display: flex;
         align-items: center;
         justify-content: center;
+        text-align: center;
+    }
+
+    .menu-btn,
+    .new-chat-btn {
+        order: 2;
+        position: static;
     }
 
     .header-actions {
-        order: 2;
+        order: 3;
         width: 100%;
         display: flex;
         justify-content: center;
+        position: relative;
     }
 
     .header-actions > div {
         display: flex;
         align-items: center;
         gap: 12px;
+        justify-content: space-between;
+        width: 100%;
+        position: relative;
+        padding-left: 88px;
+    }
+
+    .header-actions > div > .wallet-container-compact,
+    .header-actions > div > .wallet-container {
+        position: absolute;
+        left: 25%;
+        transform: translateX(-50%);
+        top: 0;
+        z-index: 1;
+        font-size: 0.6rem;
+    }
+
+    .header-actions > div > .wallet-container-compact .wallet-header-compact,
+    .header-actions > div > .wallet-container .wallet-header {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+    }
+
+    .header-actions > div > .wallet-container-compact .wallet-balance-compact,
+    .header-actions > div > .wallet-container .wallet-balance {
+        font-size: 0.6rem;
+    }
+
+    .header-actions > div > span {
+        position: static;
+        font-size: 12px;
+        margin-right: 0;
     }
 
     .header-actions .header-btn:last-child {
-        position: absolute;
-        right: 12px;
-        top: 0;
-        z-index: 10;
+        position: static;
+        width: 26px;
+        height: 26px;
+        padding: 4px;
+        margin-left: -12px;
+    }
+
+    .header-actions .header-btn:last-child svg {
+        width: 14px;
+        height: 14px;
     }
 
     .menu-btn,
     .new-chat-btn {
         position: absolute;
-        top: 10px;
+        bottom: 0;
     }
 
     .menu-btn {
         left: 12px;
+        bottom: 0;
     }
 
     .new-chat-btn {
         left: 56px;
+        bottom: 0;
     }
     
     .filter-btn {

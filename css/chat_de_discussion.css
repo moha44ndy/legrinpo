@@ -66,9 +66,11 @@
             justify-content: center !important;
             gap: 8px !important;
             margin-bottom: 4px !important;
+            order: 4;
         }
 
         .chat-header-fixed h1 {
+            order: 1;
             font-size: 1.4rem;
             margin-bottom: 4px;
             display: flex;
@@ -127,6 +129,7 @@
         }
 
         .room-info {
+            order: 2;
             font-size: 0.75rem;
             opacity: 0.7;
             margin-bottom: 2px;
@@ -138,6 +141,7 @@
         }
 
         .participants-info {
+            order: 3;
             font-size: 0.7rem;
             opacity: 0.6;
             margin-top: 2px;
@@ -455,8 +459,10 @@
         .input-container {
             position: fixed;
             bottom: 0;
-            left: 0;
-            right: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 1200px;
             z-index: 999;
             padding: 16px 20px;
             background: linear-gradient(180deg, #1a1f3a 0%, #0f1325 100%);
@@ -603,6 +609,8 @@
                 padding: 12px 10px;
                 gap: 8px;
                 flex-wrap: wrap;
+                left: 50%;
+                transform: translateX(-50%);
             }
 
             .input-container > button {
@@ -691,6 +699,8 @@
             .input-container {
                 padding: 10px 8px;
                 gap: 6px;
+                left: 50%;
+                transform: translateX(-50%);
             }
 
             .input-container > button {
@@ -753,19 +763,32 @@
         .voice-recorder-btn.stop {
             background: #4a9eff;
             color: white;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            min-height: 40px;
         }
 
         .voice-recorder-btn.stop:hover {
             background: #3a8eef;
         }
 
+        .voice-recorder-btn.stop svg {
+            width: 20px;
+            height: 20px;
+        }
+
         .voice-recorder-btn.cancel {
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
         .voice-recorder-btn.cancel:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.5);
         }
 
         .voice-recorder-timer {
@@ -783,6 +806,36 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+
+        .voice-recorder-volume {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+            max-width: 200px;
+            height: 30px;
+            margin: 0 8px;
+        }
+
+        .volume-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+            height: 100%;
+            width: 100%;
+        }
+
+        .volume-bar {
+            flex: 1;
+            min-width: 3px;
+            max-width: 6px;
+            background: linear-gradient(to top, #4a9eff, #6bb6ff);
+            border-radius: 2px;
+            transition: height 0.1s ease-out, opacity 0.1s ease-out;
+            min-height: 4px;
         }
 
         .selected-files {
