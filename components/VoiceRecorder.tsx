@@ -200,7 +200,8 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
           streamRef.current.getTracks().forEach((track) => track.stop());
         }
         if (originalOnStop) {
-          originalOnStop.call(mediaRecorderRef.current!);
+          // Appeler le handler original avec le contexte et un événement null
+          originalOnStop.call(mediaRecorderRef.current!, new Event('stop'));
         }
         resolve(audioBlob);
       };
