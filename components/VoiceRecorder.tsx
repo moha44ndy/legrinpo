@@ -489,7 +489,7 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
       
       <div className="voice-recorder-controls">
         <div className="voice-recorder-timer">
-          <span className="recording-indicator">🔴</span>
+          <span className="recording-indicator" style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block', flexShrink: 0 }} />
           <span>{formatTime(duration)} / {formatTime(maxDuration)}</span>
         </div>
         {isRecording && (

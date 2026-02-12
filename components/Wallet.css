@@ -2,6 +2,19 @@
 .wallet-container-compact {
   display: inline-flex;
   align-items: center;
+  position: relative;
+}
+
+.wallet-container-expanded {
+  z-index: 1001;
+}
+
+.wallet-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: transparent;
+  cursor: default;
 }
 
 .wallet-header-compact {
@@ -15,6 +28,7 @@
   transition: all 0.2s;
   font-size: 0.75rem;
   font-weight: 500;
+  cursor: pointer;
 }
 
 .wallet-header-compact:hover {
@@ -102,6 +116,334 @@
 }
 
 .wallet-refresh-btn:hover {
+  background: rgba(74, 158, 255, 0.3);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+.wallet-withdraw-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  color: #22c55e;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.wallet-withdraw-btn:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.wallet-withdraw-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.wallet-withdraw-hint {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ========== Modal retrait — style soigné ========== */
+.withdraw-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 39, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  animation: withdraw-overlay-in 0.25s ease-out;
+}
+
+@keyframes withdraw-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.withdraw-modal {
+  background: linear-gradient(165deg, #1e2442 0%, #161b33 100%);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  border-radius: 20px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  max-width: 420px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: withdraw-modal-in 0.3s ease-out;
+}
+
+@keyframes withdraw-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.withdraw-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.withdraw-modal-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.withdraw-modal-icon {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.withdraw-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.withdraw-modal-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.withdraw-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Formulaire */
+.withdraw-form {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.withdraw-form-balance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  background: rgba(74, 158, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 12px;
+}
+
+.withdraw-form-balance-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.withdraw-form-balance-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #4a9eff;
+  margin-right: auto;
+}
+
+.withdraw-form-balance-min {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.withdraw-form-label {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.withdraw-form-label:last-of-type {
+  margin-bottom: 8px;
+}
+
+.withdraw-form label input,
+.withdraw-form label select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.withdraw-form label input:focus,
+.withdraw-form label select:focus {
+  outline: none;
+  border-color: rgba(74, 158, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
+}
+
+.withdraw-form label input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.withdraw-form label select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='%2388a0c4'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.withdraw-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 8px;
+}
+
+.withdraw-form-actions button {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.withdraw-form-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.withdraw-form-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.withdraw-form-submit {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: none;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.35);
+}
+
+.withdraw-form-submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.4);
+}
+
+.withdraw-form-submit:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.withdraw-form-error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+}
+
+/* Écran succès */
+.withdraw-success {
+  padding: 32px 24px;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.withdraw-success-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(22, 163, 74, 0.2) 100%);
+  border: 2px solid rgba(34, 197, 94, 0.5);
+  border-radius: 50%;
+  color: #22c55e;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.withdraw-success-title {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.withdraw-success-text {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.45;
+}
+
+.withdraw-success-note {
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+  color: #4a9eff;
+  font-weight: 500;
+}
+
+.withdraw-success-btn {
+  display: inline-block;
+  padding: 12px 28px;
+  background: rgba(74, 158, 255, 0.2);
+  border: 1px solid rgba(74, 158, 255, 0.4);
+  border-radius: 12px;
+  color: #4a9eff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.withdraw-success-btn:hover {
   background: rgba(74, 158, 255, 0.3);
   border-color: rgba(74, 158, 255, 0.5);
 }

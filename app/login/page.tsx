@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { showToast } from '@/utils/toast';
+import { IconWallet } from '@/components/Icons';
 import '../globals.css';
 import './login.css';
 
@@ -22,7 +22,6 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      showToast('Connexion réussie !');
       router.push('/canaldiscussion');
     } catch (error: any) {
       let errorMessage = 'Erreur lors de la connexion';
@@ -64,7 +63,7 @@ export default function LoginPage() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>💰 Connexion</h1>
+          <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Connexion</h1>
           <p>Connectez-vous à votre compte</p>
         </div>
 

@@ -433,17 +433,27 @@
     background-color: rgba(255, 255, 255, 0.15);
 }
 
+.modal-btn.modal-btn-choice {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.modal-btn.modal-btn-choice:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 .modal-btn.confirm {
-    background: #4a9eff;
-    color: white;
+    background: rgba(74, 158, 255, 0.25);
+    color: #4a9eff;
     font-weight: 600;
-    box-shadow: 0 4px 15px rgba(74, 158, 255, 0.4);
+    border: 1px solid rgba(74, 158, 255, 0.4);
 }
 
 .modal-btn.confirm:hover {
-    background: #64b5f6;
-    box-shadow: 0 6px 20px rgba(74, 158, 255, 0.6);
-    transform: translateY(-1px);
+    background: rgba(74, 158, 255, 0.35);
+    border-color: rgba(74, 158, 255, 0.5);
 }
 
 /* Public Rooms Section */

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { IconCheck, IconError, IconWarning, IconInfo, IconTrash } from '@/components/Icons';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
@@ -69,7 +70,14 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: (id: string) => 
       } : undefined}
     >
       <div className="toast-header">
-        <span>{toast.title}</span>
+        <span className="toast-header-inner" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {toast.type === 'success' && <IconCheck size={18} className="toast-type-icon" />}
+          {toast.type === 'error' && <IconError size={18} className="toast-type-icon" />}
+          {toast.type === 'warning' && <IconWarning size={18} className="toast-type-icon" />}
+          {toast.type === 'info' && <IconInfo size={18} className="toast-type-icon" />}
+          {toast.type === 'confirm' && <IconTrash size={18} className="toast-type-icon" />}
+          <span>{toast.title}</span>
+        </span>
         {!isConfirm && (
           <button className="toast-close" onClick={() => {
             setIsVisible(false);

@@ -51,14 +51,6 @@ function createToast(
 }
 
 export function showToast(message: string, type: ToastType = 'success') {
-  const icons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️',
-    confirm: '🗑️',
-  };
-  
   const titles = {
     success: 'Succès',
     error: 'Erreur',
@@ -66,8 +58,7 @@ export function showToast(message: string, type: ToastType = 'success') {
     info: 'Information',
     confirm: 'Confirmation',
   };
-  
-  return createToast(type, `${icons[type]} ${titles[type]}`, message);
+  return createToast(type, titles[type], message);
 }
 
 export function showConfirmToast(
@@ -77,7 +68,7 @@ export function showConfirmToast(
   onCancel?: () => void,
   options: { confirmText?: string; cancelText?: string } = {}
 ) {
-  return createToast('confirm', `🗑️ ${title}`, message, {
+  return createToast('confirm', title, message, {
     onConfirm,
     onCancel,
     confirmText: options.confirmText || 'Supprimer',

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { showToast } from '@/utils/toast';
+import { IconEdit } from '@/components/Icons';
 import '../globals.css';
 import './register.css';
 
@@ -41,7 +41,6 @@ export default function RegisterPage() {
 
     try {
       await signUp(email, password, username);
-      showToast('Inscription réussie ! Bienvenue !');
       router.push('/canaldiscussion');
     } catch (error: any) {
       let errorMessage = 'Erreur lors de l\'inscription';
@@ -77,7 +76,7 @@ export default function RegisterPage() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>📝 Inscription</h1>
+          <h1><IconEdit size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Inscription</h1>
           <p>Créez votre compte pour commencer</p>
         </div>
 

@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
-import { subscribeToToasts, showToast, showConfirmToast, closeToast } from '@/utils/toast';
-import { ToastContainer, Toast } from '@/components/Toast';
 import Wallet from '@/components/Wallet';
+import { IconGlobe, IconHandshake, IconBriefcase, IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
 import '../globals.css';
 import './canaldiscussion-wa.css';
+
+type PublicIconKey = 'globe' | 'handshake' | 'briefcase' | 'globeAlt';
 
 interface ChatItem {
   id: string;
@@ -23,6 +24,7 @@ interface ChatItem {
   room: RoomHistoryItem;
   isUnread?: boolean;
   isFavorite?: boolean;
+  iconKey?: PublicIconKey;
 }
 
 export default function CanalDiscussionPage() {
@@ -44,8 +46,8 @@ export default function CanalDiscussionPage() {
     }
   }, [user, userProfile, userId]);
   
-  const [showPrivateForm, setShowPrivateForm] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinModalMode, setJoinModalMode] = useState<'choice' | 'create' | 'join'>('choice');
   const [roomName, setRoomName] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [linkInput, setLinkInput] = useState('');
@@ -53,6 +55,9 @@ export default function CanalDiscussionPage() {
   const [joinPassword, setJoinPassword] = useState('');
   const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
   const [createdRoomPassword, setCreatedRoomPassword] = useState<string | null>(null);
+  const [modalMessage, setModalMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const [history, setHistory] = useState<RoomHistory>({ created: [], joined: [] });
   const [allChats, setAllChats] = useState<ChatItem[]>([]);
@@ -63,19 +68,9 @@ export default function CanalDiscussionPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
-  
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
     setHistory(loadHistory());
-    
-    const unsubscribe = subscribeToToasts((newToasts) => {
-      setToasts(newToasts);
-    });
-    
-    return () => {
-      unsubscribe();
-    };
   }, []);
 
   // Obtenir le dernier message depuis Firebase
@@ -101,7 +96,7 @@ export default function CanalDiscussionPage() {
         if (message) {
           preview = message.length > 50 ? message.substring(0, 50) + '...' : message;
         } else {
-          preview = '📎 Pièce jointe';
+          preview = 'Pièce jointe';
         }
 
         if (username) {
@@ -120,7 +115,7 @@ export default function CanalDiscussionPage() {
 
   // Générer un avatar avec couleur basée sur le nom (palette noir/bleu)
   const getAvatar = (name: string): { char: string; color: string } => {
-    if (!name) return { char: '👤', color: '#2563eb' };
+    if (!name) return { char: '?', color: '#2563eb' };
     const firstChar = name.charAt(0).toUpperCase();
     // Palette de couleurs noir/bleu
     const colors = [
@@ -174,23 +169,24 @@ export default function CanalDiscussionPage() {
       };
 
       // Ajouter les discussions publiques par défaut
-      const publicRooms = [
-        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', icon: '🌍' },
-        { id: 'public_cedeao', name: 'CEDEAO', description: 'Communauté Économique', icon: '🤝' },
-        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', icon: '💼' },
-        { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', icon: '🌐' }
+      const publicRooms: { id: string; name: string; description: string; iconKey: PublicIconKey }[] = [
+        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', iconKey: 'globe' },
+        { id: 'public_cedeao', name: 'CEDEAO', description: 'Communauté Économique', iconKey: 'handshake' },
+        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', iconKey: 'briefcase' },
+        { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', iconKey: 'globeAlt' }
       ];
 
       for (const publicRoom of publicRooms) {
         const lastMessage = await getLastMessage(publicRoom.id);
         chats.push({
           id: publicRoom.id,
-          name: `${publicRoom.icon} ${publicRoom.name}`,
+          name: publicRoom.name,
           type: 'group',
           isPrivate: false,
           lastMessage: lastMessage,
           timestamp: new Date().toISOString(),
-          avatar: { char: publicRoom.icon, color: '#d32f2f' },
+          avatar: { char: publicRoom.name.charAt(0), color: '#d32f2f' },
+          iconKey: publicRoom.iconKey,
           room: {
             id: publicRoom.id,
             name: publicRoom.name,
@@ -282,7 +278,7 @@ export default function CanalDiscussionPage() {
                 if (message) {
                   preview = message.length > 50 ? message.substring(0, 50) + '...' : message;
                 } else {
-                  preview = '📎 Pièce jointe';
+                  preview = 'Pièce jointe';
                 }
                 
                 if (messageUsername) {
@@ -379,18 +375,14 @@ export default function CanalDiscussionPage() {
     return 'group_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
   };
 
-  const handleCreatePrivateRoom = () => {
-    setShowPrivateForm(true);
-  };
-
   const handleCreatePrivateRoomWithPassword = () => {
+    setModalMessage(null);
     if (!roomName.trim()) {
-      showToast('Veuillez entrer un nom pour votre discussion.', 'warning');
+      setModalMessage({ type: 'error', text: 'Veuillez entrer un nom pour votre discussion.' });
       return;
     }
-    
     if (!roomPassword.trim()) {
-      showToast('Veuillez entrer un mot de passe pour la discussion privée.', 'warning');
+      setModalMessage({ type: 'error', text: 'Veuillez entrer un mot de passe pour la discussion privée.' });
       return;
     }
 
@@ -413,11 +405,9 @@ export default function CanalDiscussionPage() {
 
     setCreatedRoomId(id);
     setCreatedRoomPassword(roomPassword.trim());
-    setShowPrivateForm(false);
+    setShowJoinModal(false);
     setRoomName('');
     setRoomPassword('');
-    
-    showToast('Discussion privée créée avec succès !');
   };
 
   const handleJoinPublic = (roomType: string = 'aes') => {
@@ -451,20 +441,14 @@ export default function CanalDiscussionPage() {
 
   const handleJoinByLink = () => {
     const link = linkInput.trim();
-    if (!link) {
-      showToast('Veuillez coller un lien de discussion valide.', 'warning');
-      return;
-    }
+    if (!link) return;
 
     try {
       const url = new URL(link);
       const room = url.searchParams.get('room');
       const password = url.searchParams.get('password') || undefined;
       
-      if (!room || (!room.startsWith('group_') && !room.startsWith('member_') && !room.startsWith('public_'))) {
-        showToast('Le lien fourni ne semble pas être un lien de discussion valide.', 'error');
-        return;
-      }
+      if (!room || (!room.startsWith('group_') && !room.startsWith('member_') && !room.startsWith('public_'))) return;
 
       const item: RoomHistoryItem = {
         id: room,
@@ -487,20 +471,13 @@ export default function CanalDiscussionPage() {
         }`
       );
     } catch {
-      showToast('Lien invalide.', 'error');
+      setModalMessage({ type: 'error', text: 'Lien invalide.' });
     }
   };
 
   const handleJoinPrivateRoom = () => {
-    if (!joinRoomName.trim()) {
-      showToast('Veuillez entrer le nom de la discussion.', 'warning');
-      return;
-    }
-    
-    if (!joinPassword.trim()) {
-      showToast('Veuillez entrer le mot de passe de la discussion.', 'warning');
-      return;
-    }
+    if (!joinRoomName.trim()) return;
+    if (!joinPassword.trim()) return;
 
     let fullId = joinRoomName.trim();
     if (!fullId.startsWith('group_') && !fullId.startsWith('member_') && !fullId.startsWith('public_')) {
@@ -585,28 +562,20 @@ export default function CanalDiscussionPage() {
       ? history.created.findIndex(r => r.id === chatId)
       : history.joined.findIndex(r => r.id === chatId);
 
-    showConfirmToast(
-      'Confirmer la suppression',
-      `Êtes-vous sûr de vouloir supprimer "<strong>${chat.name}</strong>" de votre historique ?<br><br><small style="color: #999;">Cette action est irréversible.</small>`,
-      () => {
-        const next = { ...history };
-        next[type].splice(index, 1);
-        saveHistory(next);
-        setHistory(next);
-        showToast(`"${chat.name}" supprimé de l'historique`);
-      }
-    );
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer "${chat.name}" de votre historique ?`)) return;
+    const next = { ...history };
+    next[type].splice(index, 1);
+    saveHistory(next);
+    setHistory(next);
   };
 
   const copyGeneratedLink = () => {
     if (!createdRoomId) return;
-    
     const roomUrl = `${window.location.origin}/chat?room=${createdRoomId}&password=${encodeURIComponent(createdRoomPassword || '')}`;
-    
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(roomUrl).then(() => {
-        showToast('Lien de la discussion privée copié !');
-      });
+      navigator.clipboard.writeText(roomUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
     }
   };
 
@@ -655,23 +624,17 @@ export default function CanalDiscussionPage() {
       {/* Header */}
       <header className="wa-header">
         <div className="header-top">
-          <button className="header-btn menu-btn" onClick={() => setShowJoinModal(true)}>
-            <span>☰</span>
-          </button>
-          <button className="header-btn new-chat-btn" onClick={() => setShowPrivateForm(true)}>
-            <span>+</span>
+          <button className="header-btn menu-btn" onClick={() => { setJoinModalMode('choice'); setShowJoinModal(true); }}>
+            <IconMenu size={20} />
           </button>
           <h1 className="header-title">Discussions</h1>
           <div className="header-actions">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {userId && <Wallet userId={userId} username={username} />}
+              {userId && <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />}
               <span style={{ color: '#4a9eff', fontSize: '18px', fontWeight: '600' }}>{username.toUpperCase()}</span>
               <button 
                 className="header-btn" 
-                onClick={async () => {
-                  await logout();
-                  router.push('/login');
-                }}
+                onClick={() => setShowLogoutConfirm(true)}
                 title="Déconnexion"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -691,7 +654,7 @@ export default function CanalDiscussionPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <span className="search-icon">🔍</span>
+          <span className="search-icon"><IconSearch size={18} /></span>
         </div>
       </header>
 
@@ -731,22 +694,23 @@ export default function CanalDiscussionPage() {
             {allChats
               .filter(chat => chat.id.startsWith('public_'))
               .map((chat) => {
-                const publicRoomInfo: { [key: string]: { icon: string; description: string } } = {
-                  'public_aes': { icon: '🌍', description: 'Alliance des États du Sahel' },
-                  'public_cedeao': { icon: '🤝', description: 'Communauté Économique' },
-                  'public_uemoa': { icon: '💼', description: 'Union Économique' },
-                  'public_autres': { icon: '🌐', description: 'Organisation Globale' }
+                const publicRoomInfo: { [key: string]: { description: string } } = {
+                  'public_aes': { description: 'Alliance des États du Sahel' },
+                  'public_cedeao': { description: 'Communauté Économique' },
+                  'public_uemoa': { description: 'Union Économique' },
+                  'public_autres': { description: 'Organisation Globale' }
                 };
-                const info = publicRoomInfo[chat.id] || { icon: '🌐', description: '' };
-                
+                const info = publicRoomInfo[chat.id] || { description: '' };
+                const iconKey = chat.iconKey || 'globeAlt';
+                const PublicIcon = iconKey === 'globe' ? IconGlobe : iconKey === 'handshake' ? IconHandshake : iconKey === 'briefcase' ? IconBriefcase : IconGlobeAlt;
                 return (
                   <button
                     key={chat.id}
                     className="public-room-btn"
                     onClick={() => handleRejoinRoom(chat)}
                   >
-                    <span>{info.icon}</span>
-                    <span>{chat.room.name || chat.name.replace(info.icon + ' ', '')}</span>
+                    <span><PublicIcon size={24} /></span>
+                    <span>{chat.room.name || chat.name}</span>
                     <small>{info.description}</small>
                   </button>
                 );
@@ -811,7 +775,7 @@ export default function CanalDiscussionPage() {
                     }}
                     title={favorites.has(chat.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                   >
-                    {favorites.has(chat.id) ? '⭐' : '☆'}
+                    <IconStar size={18} filled={favorites.has(chat.id)} />
                   </button>
                   <button 
                     className="chat-action-btn"
@@ -825,7 +789,13 @@ export default function CanalDiscussionPage() {
                     }}
                     title={unreadChats.has(chat.id) ? 'Marquer comme lu' : 'Marquer comme non lu'}
                   >
-                    {unreadChats.has(chat.id) ? '🔵' : '⚪'}
+                    <span style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: unreadChats.has(chat.id) ? '#4a9eff' : 'rgba(255,255,255,0.3)',
+                      display: 'inline-block'
+                    }} />
                   </button>
                   {!chat.id.startsWith('public_') && (
                     <button 
@@ -835,7 +805,7 @@ export default function CanalDiscussionPage() {
                         handleDeleteRoom(chat.id);
                       }}
                     >
-                      🗑️
+                      <IconTrash size={16} />
                     </button>
                   )}
                 </div>
@@ -845,100 +815,160 @@ export default function CanalDiscussionPage() {
         )}
       </div>
 
-      {/* Modals */}
-      {showPrivateForm && (
-        <div className="modal-overlay" onClick={() => setShowPrivateForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">🔐 Créer une Discussion Privée</h3>
-            <div className="form-group">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Nom de la discussion"
-                maxLength={30}
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreatePrivateRoomWithPassword()}
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Mot de passe de la discussion"
-                maxLength={50}
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreatePrivateRoomWithPassword()}
-              />
-            </div>
-            <div className="modal-actions">
-              <button className="modal-btn cancel" onClick={() => {
-                setShowPrivateForm(false);
-                setRoomName('');
-                setRoomPassword('');
-              }}>
-                Annuler
-              </button>
-              <button className="modal-btn confirm" onClick={handleCreatePrivateRoomWithPassword}>
-                Créer
-              </button>
-            </div>
+      {/* Modal unique : Créer / Rejoindre une discussion */}
+      {showJoinModal && (
+        <div className="modal-overlay" onClick={() => { setShowJoinModal(false); setJoinModalMode('choice'); setModalMessage(null); }}>
+          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+            {joinModalMode === 'choice' && (
+              <>
+                <h3 className="modal-title"><IconClipboard size={22} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Discussion</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className="modal-btn modal-btn-choice"
+                    style={{ justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
+                    onClick={() => setJoinModalMode('create')}
+                  >
+                    <IconLock size={20} /> Créer une discussion privée
+                  </button>
+                  <button
+                    type="button"
+                    className="modal-btn modal-btn-choice"
+                    style={{ justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
+                    onClick={() => setJoinModalMode('join')}
+                  >
+                    <IconClipboard size={20} /> Rejoindre une discussion
+                  </button>
+                </div>
+                <button className="modal-btn cancel" style={{ marginTop: 20 }} onClick={() => setShowJoinModal(false)}>
+                  Fermer
+                </button>
+              </>
+            )}
+
+            {joinModalMode === 'create' && (
+              <>
+                <h3 className="modal-title"><IconLock size={22} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Créer une discussion privée</h3>
+                {modalMessage && (
+                  <div className={`modal-message ${modalMessage.type}`} style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, fontSize: 14, background: modalMessage.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: modalMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>
+                    {modalMessage.text}
+                  </div>
+                )}
+                <div className="form-group">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Nom de la discussion"
+                    maxLength={30}
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreatePrivateRoomWithPassword()}
+                  />
+                </div>
+                <div className="form-group">
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Mot de passe de la discussion"
+                    maxLength={50}
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreatePrivateRoomWithPassword()}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button className="modal-btn cancel" onClick={() => { setJoinModalMode('choice'); setRoomName(''); setRoomPassword(''); }}>
+                    Retour
+                  </button>
+                  <button className="modal-btn confirm" onClick={handleCreatePrivateRoomWithPassword}>
+                    Créer
+                  </button>
+                </div>
+              </>
+            )}
+
+            {joinModalMode === 'join' && (
+              <>
+                <h3 className="modal-title"><IconClipboard size={22} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Rejoindre une discussion</h3>
+                <div className="join-section-modal">
+                  <h4>Rejoindre par lien</h4>
+                  <div className="join-form-modal">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Collez votre lien d'invitation..."
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleJoinByLink()}
+                    />
+                    <button className="modal-btn confirm" onClick={() => handleJoinByLink()}>
+                      Rejoindre
+                    </button>
+                  </div>
+                </div>
+                <div className="join-section-modal">
+                  <h4><IconLock size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Rejoindre une discussion privée</h4>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Nom de la discussion"
+                      value={joinRoomName}
+                      onChange={(e) => setJoinRoomName(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Mot de passe de la discussion"
+                      value={joinPassword}
+                      onChange={(e) => setJoinPassword(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleJoinPrivateRoom()}
+                    />
+                  </div>
+                  <button className="modal-btn confirm" onClick={() => handleJoinPrivateRoom()}>
+                    Rejoindre
+                  </button>
+                </div>
+                <div className="modal-actions" style={{ marginTop: 16 }}>
+                  <button className="modal-btn cancel" onClick={() => setJoinModalMode('choice')}>
+                    Retour
+                  </button>
+                  <button className="modal-btn cancel" onClick={() => setShowJoinModal(false)}>
+                    Fermer
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {showJoinModal && (
-        <div className="modal-overlay" onClick={() => setShowJoinModal(false)}>
-          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">📋 Rejoindre une Discussion</h3>
-            
-            <div className="join-section-modal">
-              <h4>Rejoindre par lien</h4>
-              <div className="join-form-modal">
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Collez votre lien d'invitation..."
-                  value={linkInput}
-                  onChange={(e) => setLinkInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleJoinByLink()}
-                />
-                <button className="modal-btn confirm" onClick={() => { handleJoinByLink(); setShowJoinModal(false); }}>
-                  Rejoindre
-                </button>
-              </div>
-            </div>
-
-            <div className="join-section-modal">
-              <h4>🔐 Rejoindre une Discussion Privée</h4>
-              <div className="form-group">
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Nom de la discussion"
-                  value={joinRoomName}
-                  onChange={(e) => setJoinRoomName(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Mot de passe de la discussion"
-                  value={joinPassword}
-                  onChange={(e) => setJoinPassword(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleJoinPrivateRoom()}
-                />
-              </div>
-              <button className="modal-btn confirm" onClick={() => { handleJoinPrivateRoom(); setShowJoinModal(false); }}>
-                Rejoindre
+      {/* Modal confirmation déconnexion */}
+      {showLogoutConfirm && (
+        <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Déconnexion</h3>
+            <p style={{ margin: '16px 0', color: 'rgba(255,255,255,0.9)', fontSize: 15 }}>
+              Êtes-vous sûr de vouloir vous déconnecter ?
+            </p>
+            <div className="modal-actions" style={{ marginTop: 20 }}>
+              <button className="modal-btn cancel" onClick={() => setShowLogoutConfirm(false)}>
+                Annuler
+              </button>
+              <button
+                className="modal-btn confirm"
+                style={{ background: 'rgba(239, 68, 68, 0.9)', borderColor: '#ef4444' }}
+                onClick={async () => {
+                  setShowLogoutConfirm(false);
+                  await logout();
+                  router.push('/login');
+                }}
+              >
+                Se déconnecter
               </button>
             </div>
-
-            <button className="modal-btn cancel" onClick={() => setShowJoinModal(false)}>
-              Fermer
-            </button>
           </div>
         </div>
       )}
@@ -955,6 +985,7 @@ export default function CanalDiscussionPage() {
                 {`${window.location.origin}/chat?room=${createdRoomId}&password=${encodeURIComponent(createdRoomPassword || '')}`}
               </div>
             </div>
+            {linkCopied && <p style={{ marginBottom: 12, fontSize: 14, color: '#22c55e' }}>Lien copié !</p>}
             <div className="modal-actions">
               <button className="modal-btn cancel" onClick={() => setCreatedRoomId(null)}>
                 Fermer
@@ -969,8 +1000,6 @@ export default function CanalDiscussionPage() {
           </div>
         </div>
       )}
-
-      <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
   );
 }

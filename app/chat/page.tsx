@@ -4,10 +4,9 @@ import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, FileAttachment } from '@/hooks/useChat';
-import { subscribeToToasts, showToast, closeToast } from '@/utils/toast';
-import { ToastContainer, Toast } from '@/components/Toast';
 import Wallet from '@/components/Wallet';
 import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
+import { IconLock, IconGlobe, IconChat, IconStatusDot, IconAttachment, IconImage, IconVideo, IconMusic, IconSettings, IconTrash } from '@/components/Icons';
 import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
 import { v4 as uuidv4 } from 'uuid';
 import '../globals.css';
@@ -26,7 +25,7 @@ function ChatPageContent() {
   const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : null);
   
   // Tous les hooks doivent être déclarés avant tout return conditionnel
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [bannerMessage, setBannerMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
@@ -40,11 +39,13 @@ function ChatPageContent() {
   const holdStartPositionRef = useRef<{ x: number; y: number } | null>(null);
   const [clickedMessageId, setClickedMessageId] = useState<string | null>(null);
   const [messageMenuPosition, setMessageMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [showGroupSettingsModal, setShowGroupSettingsModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageMenuRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPositionRef = useRef<{ x: number; y: number } | null>(null);
   const voiceRecorderRef = useRef<VoiceRecorderRef>(null);
+  const cancelRecordingHandlerRef = useRef<() => void>(() => {});
   
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -73,6 +74,11 @@ function ChatPageContent() {
     toggleReaction,
     messagesEndRef,
     scrollToBottom,
+    isCreator,
+    isRemovedFromGroup,
+    roomCreatorId,
+    members,
+    removeMember,
   } = useChat({
     roomId: roomId || '',
     roomPassword,
@@ -82,15 +88,6 @@ function ChatPageContent() {
   });
   
   // Tous les useEffect doivent être appelés avant tout return conditionnel
-  useEffect(() => {
-    const unsubscribe = subscribeToToasts((newToasts) => {
-      setToasts(newToasts);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (!roomId) {
@@ -121,6 +118,70 @@ function ChatPageContent() {
       }
     };
   }, [clickedMessageId]);
+
+  const handleGlobalMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isHoldingMic || !holdStartPositionRef.current) return;
+    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX) : e.clientX;
+    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY) : e.clientY;
+    if (clientX === undefined || clientY === undefined) return;
+    const deltaY = holdStartPositionRef.current.y - clientY;
+    const deltaX = Math.abs(holdStartPositionRef.current.x - clientX);
+    if (deltaY > 50 || deltaX > 100) {
+      setShouldCancelRecording(true);
+    } else {
+      setShouldCancelRecording(false);
+    }
+  }, [isHoldingMic]);
+
+  const handleGlobalUp = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isHoldingMic) return;
+    e.preventDefault();
+    document.removeEventListener('mousemove', handleGlobalMove);
+    document.removeEventListener('mouseup', handleGlobalUp);
+    document.removeEventListener('touchmove', handleGlobalMove);
+    document.removeEventListener('touchend', handleGlobalUp);
+    const shouldCancel = shouldCancelRecording;
+    setShouldCancelRecording(false);
+    if (shouldCancel) {
+      cancelRecordingHandlerRef.current();
+    } else {
+      if (voiceRecorderRef.current && voiceRecorderRef.current.isRecording) {
+        voiceRecorderRef.current.stopAndGetAudio().then((audioBlob) => {
+          if (audioBlob) setRecordedAudioBlob(audioBlob);
+          setIsRecordingVoice(false);
+          setIsHoldingMic(false);
+        });
+      } else {
+        setIsHoldingMic(false);
+      }
+    }
+    holdStartPositionRef.current = null;
+  }, [isHoldingMic, shouldCancelRecording]);
+
+  const handleVoiceRecordingCancel = useCallback(() => {
+    setIsRecordingVoice(false);
+    setRecordedAudioBlob(null);
+    setIsHoldingMic(false);
+    setShouldCancelRecording(false);
+    holdStartPositionRef.current = null;
+    document.removeEventListener('mousemove', handleGlobalMove);
+    document.removeEventListener('mouseup', handleGlobalUp);
+    document.removeEventListener('touchmove', handleGlobalMove);
+    document.removeEventListener('touchend', handleGlobalUp);
+  }, [handleGlobalMove, handleGlobalUp]);
+
+  useEffect(() => {
+    cancelRecordingHandlerRef.current = handleVoiceRecordingCancel;
+  }, [handleVoiceRecordingCancel]);
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMove);
+      document.removeEventListener('mouseup', handleGlobalUp);
+      document.removeEventListener('touchmove', handleGlobalMove);
+      document.removeEventListener('touchend', handleGlobalUp);
+    };
+  }, [handleGlobalMove, handleGlobalUp]);
   
   // Si pas de userId valide, ne pas afficher le chat
   if (!userId) {
@@ -181,7 +242,7 @@ function ChatPageContent() {
             size: audioMetadata.size,
           };
         } catch (error: any) {
-          showToast(`Erreur lors de l'upload de la note vocale: ${error.message}`, 'error');
+          setBannerMessage({ type: 'error', text: `Erreur lors de l'upload de la note vocale: ${error.message}` });
         }
       }
 
@@ -189,7 +250,6 @@ function ChatPageContent() {
       if (selectedFiles.length > 0) {
         for (const file of selectedFiles) {
           if (!isFileTypeAllowed(file)) {
-            showToast(`Type de fichier non autorisé : ${file.name}`, 'error');
             continue;
           }
 
@@ -202,7 +262,7 @@ function ChatPageContent() {
               size: metadata.size,
             });
           } catch (error: any) {
-            showToast(`Erreur lors de l'upload de ${file.name}: ${error.message}`, 'error');
+            // Erreur upload fichier
           }
         }
       }
@@ -216,7 +276,7 @@ function ChatPageContent() {
       setIsRecordingVoice(false);
       setRecordedAudioBlob(null);
     } catch (error: any) {
-      showToast(`Erreur lors de l'envoi du message: ${error.message}`, 'error');
+      setBannerMessage({ type: 'error', text: `Erreur lors de l'envoi du message: ${error.message}` });
     } finally {
       setUploading(false);
     }
@@ -229,8 +289,6 @@ function ChatPageContent() {
     files.forEach((file) => {
       if (isFileTypeAllowed(file)) {
         validFiles.push(file);
-      } else {
-        showToast(`Type de fichier non autorisé : ${file.name}`, 'error');
       }
     });
 
@@ -268,7 +326,7 @@ function ChatPageContent() {
       
       setMessageInput('');
     } catch (error: any) {
-      showToast(`Erreur lors de l'upload de la note vocale: ${error.message}`, 'error');
+      setBannerMessage({ type: 'error', text: `Erreur lors de l'upload de la note vocale: ${error.message}` });
     } finally {
       setUploading(false);
     }
@@ -278,105 +336,23 @@ function ChatPageContent() {
     setRecordedAudioBlob(audioBlob);
   };
 
-  const handleVoiceRecordingCancel = () => {
-    // Réinitialiser complètement tous les états comme si on n'avait jamais appuyé sur le bouton
-    // IMPORTANT: Mettre isRecordingVoice à false EN PREMIER pour démonter le composant immédiatement
-    setIsRecordingVoice(false);
-    setRecordedAudioBlob(null);
-    setIsHoldingMic(false);
-    setShouldCancelRecording(false);
-    holdStartPositionRef.current = null;
-    
-    // Retirer les écouteurs globaux s'ils sont encore actifs
-    document.removeEventListener('mousemove', handleGlobalMove);
-    document.removeEventListener('mouseup', handleGlobalUp);
-    document.removeEventListener('touchmove', handleGlobalMove);
-    document.removeEventListener('touchend', handleGlobalUp);
-  };
-
   const handleMicButtonDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isConnected || uploading) return;
-    
     e.preventDefault();
     setIsHoldingMic(true);
     setShouldCancelRecording(false);
-    
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     holdStartPositionRef.current = { x: clientX, y: clientY };
-    
-    // Démarrer l'enregistrement
     setIsRecordingVoice(true);
-    
-    // Ajouter les écouteurs globaux
     document.addEventListener('mousemove', handleGlobalMove);
     document.addEventListener('mouseup', handleGlobalUp);
     document.addEventListener('touchmove', handleGlobalMove, { passive: false });
     document.addEventListener('touchend', handleGlobalUp);
   };
 
-  const handleGlobalMove = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!isHoldingMic || !holdStartPositionRef.current) return;
-    
-    const clientX = 'touches' in e ? (e.touches[0]?.clientX ?? e.changedTouches[0]?.clientX) : e.clientX;
-    const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? e.changedTouches[0]?.clientY) : e.clientY;
-    
-    if (clientX === undefined || clientY === undefined) return;
-    
-    const deltaY = holdStartPositionRef.current.y - clientY;
-    const deltaX = Math.abs(holdStartPositionRef.current.x - clientX);
-    
-    // Si on glisse vers le haut de plus de 50px, annuler
-    if (deltaY > 50 || deltaX > 100) {
-      setShouldCancelRecording(true);
-    } else {
-      setShouldCancelRecording(false);
-    }
-  }, [isHoldingMic]);
-
-  const handleGlobalUp = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!isHoldingMic) return;
-    
-    e.preventDefault();
-    
-    // Retirer les écouteurs globaux
-    document.removeEventListener('mousemove', handleGlobalMove);
-    document.removeEventListener('mouseup', handleGlobalUp);
-    document.removeEventListener('touchmove', handleGlobalMove);
-    document.removeEventListener('touchend', handleGlobalUp);
-    
-    const shouldCancel = shouldCancelRecording;
-    setShouldCancelRecording(false);
-    
-    if (shouldCancel) {
-      // Annuler l'enregistrement complètement
-      // On annule d'abord pour démonter le composant, ce qui empêchera le redémarrage
-      handleVoiceRecordingCancel();
-    } else {
-      // Arrêter l'enregistrement mais garder l'audio
-      if (voiceRecorderRef.current && voiceRecorderRef.current.isRecording) {
-        voiceRecorderRef.current.stopAndGetAudio().then((audioBlob) => {
-          if (audioBlob) {
-            setRecordedAudioBlob(audioBlob);
-          }
-          setIsRecordingVoice(false);
-          setIsHoldingMic(false);
-        });
-      } else {
-        setIsHoldingMic(false);
-      }
-    }
-    
-    holdStartPositionRef.current = null;
-  }, [isHoldingMic, handleVoiceRecordingCancel]);
-
-  const handleMicButtonMove = (e: React.MouseEvent | React.TouchEvent) => {
-    // Cette fonction est maintenant gérée par handleGlobalMove
-  };
-
-  const handleMicButtonUp = (e: React.MouseEvent | React.TouchEvent) => {
-    // Cette fonction est maintenant gérée par handleGlobalUp
-  };
+  const handleMicButtonMove = (_e: React.MouseEvent | React.TouchEvent) => {};
+  const handleMicButtonUp = (_e: React.MouseEvent | React.TouchEvent) => {};
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -384,16 +360,6 @@ function ChatPageContent() {
       handleSendMessage();
     }
   };
-
-  // Nettoyer les écouteurs globaux au démontage
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('mousemove', handleGlobalMove);
-      document.removeEventListener('mouseup', handleGlobalUp);
-      document.removeEventListener('touchmove', handleGlobalMove);
-      document.removeEventListener('touchend', handleGlobalUp);
-    };
-  }, [handleGlobalMove, handleGlobalUp]);
 
   const handleEdit = (messageId: string, currentText: string) => {
     setEditingMessageId(messageId);
@@ -490,7 +456,6 @@ function ChatPageContent() {
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
-    showToast('Texte copié dans le presse-papiers', 'success');
     setClickedMessageId(null);
     setMessageMenuPosition(null);
   };
@@ -552,9 +517,37 @@ function ChatPageContent() {
     return (
       <main style={{ padding: 40, color: '#ffffff', textAlign: 'center', background: '#0a0e27' }}>
         <div className="error-message" style={{ textAlign: 'center', padding: '40px' }}>
-          <h2>🔐 Accès Refusé</h2>
+          <h2><IconLock size={24} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Accès Refusé</h2>
           <p style={{ margin: '20px 0' }}>
             Le mot de passe pour cette discussion privée est incorrect ou manquant.
+          </p>
+          <a
+            href="/canaldiscussion"
+            style={{
+              background: '#4a9eff',
+              color: '#ffffff',
+              padding: '12px 25px',
+              borderRadius: '20px',
+              textDecoration: 'none',
+              fontWeight: 600,
+              display: 'inline-block',
+              marginTop: '20px',
+            }}
+          >
+            Retour aux Discussions
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  if (connectionStatus === 'removed' || isRemovedFromGroup) {
+    return (
+      <main style={{ padding: 40, color: '#ffffff', textAlign: 'center', background: '#0a0e27' }}>
+        <div className="error-message" style={{ textAlign: 'center', padding: '40px' }}>
+          <h2>Vous avez été retiré de ce groupe</h2>
+          <p style={{ margin: '20px 0' }}>
+            L&apos;administrateur du groupe vous a retiré. Vous ne pouvez plus accéder à cette discussion.
           </p>
           <a
             href="/canaldiscussion"
@@ -585,26 +578,155 @@ function ChatPageContent() {
         <div className="header-content-wrapper">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
             <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
-              connectionStatus === 'online' ? '🟢 Connecté' :
-              connectionStatus === 'connecting' ? '🟡 Connexion...' :
-              '🔴 Hors ligne'
+              connectionStatus === 'online' ? 'Connecté' :
+              connectionStatus === 'connecting' ? 'Connexion...' :
+              'Hors ligne'
             } />
-            <Wallet userId={userId} username={username} />
+            <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />
           </div>
           <h1>
-            {isPublicRoom ? `🌍 ${getPublicRoomName(roomId)}` : isPrivateRoom ? '🔐 Discussion Privée' : '💬 Discussion'}
+            {isPublicRoom ? <><IconGlobe size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} />{getPublicRoomName(roomId)}</> : isPrivateRoom ? <><IconLock size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Discussion Privée</> : <><IconChat size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Discussion</>}
           </h1>
           <div className="room-info">
             {isPublicRoom ? `Discussion Publique - ${getPublicRoomName(roomId)}` : `Discussion: ${roomId?.substring(0, 20)}...`}
           </div>
-          <div className="participants-info">
+          <div className="participants-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
             {messages.length > 0 && `${new Set(messages.map((m) => m.userId)).size} participant(s)`}
+            {isPrivateRoom && isCreator && (
+              <button
+                type="button"
+                onClick={() => setShowGroupSettingsModal(true)}
+                title="Paramètres du groupe"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  background: 'rgba(74, 158, 255, 0.2)',
+                  border: '1px solid rgba(74, 158, 255, 0.4)',
+                  borderRadius: 8,
+                  color: '#4a9eff',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <IconSettings size={18} /> Paramètres du groupe
+              </button>
+            )}
           </div>
         </div>
       </div>
 
+      {showGroupSettingsModal && isPrivateRoom && isCreator && (
+        <div
+          className="withdraw-modal-overlay"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={() => setShowGroupSettingsModal(false)}
+        >
+          <div
+            className="withdraw-modal"
+            style={{ maxWidth: 400, width: '90%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="withdraw-modal-header">
+              <div className="withdraw-modal-header-inner">
+                <IconSettings size={24} />
+                <h3 className="withdraw-modal-title">Paramètres du groupe</h3>
+              </div>
+              <button type="button" className="withdraw-modal-close" onClick={() => setShowGroupSettingsModal(false)} aria-label="Fermer">×</button>
+            </div>
+            <div style={{ padding: 20 }}>
+              <p style={{ margin: '0 0 16px', fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)' }}>Membres du groupe ({members.length})</p>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {members.map((member) => (
+                  <li
+                    key={member.userId}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      background: 'rgba(255,255,255,0.05)',
+                      borderRadius: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(74, 158, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: '#4a9eff' }}>
+                        {member.username.charAt(0).toUpperCase()}
+                      </div>
+                      <span style={{ fontWeight: 500 }}>{member.username}</span>
+                      {member.userId === roomCreatorId && (
+                        <span style={{ fontSize: '0.75rem', background: 'rgba(74, 158, 255, 0.3)', color: '#4a9eff', padding: '2px 8px', borderRadius: 6 }}>Créateur</span>
+                      )}
+                    </div>
+                    {member.userId !== roomCreatorId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Retirer ${member.username} du groupe ?`)) {
+                            removeMember(member.userId);
+                            setBannerMessage({ type: 'success', text: `${member.username} a été retiré du groupe.` });
+                            setTimeout(() => setBannerMessage(null), 3000);
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '6px 10px',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          borderRadius: 6,
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                        }}
+                        title="Retirer du groupe"
+                      >
+                        <IconTrash size={14} /> Retirer
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {members.length === 0 && (
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>Aucun autre membre pour le moment.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="chat-container">
         <div className="chat-content">
+          {bannerMessage && (
+            <div
+              className="chat-banner-message"
+              style={{
+                padding: '10px 14px',
+                margin: '0 12px 8px',
+                borderRadius: 8,
+                fontSize: 14,
+                background: bannerMessage.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                color: bannerMessage.type === 'error' ? '#ef4444' : '#22c55e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <span>{bannerMessage.text}</span>
+              <button
+                type="button"
+                onClick={() => setBannerMessage(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'inherit', opacity: 0.8 }}
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <div className="messages" id="messages">
             {connectionStatus === 'connecting' ? (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
@@ -623,7 +745,7 @@ function ChatPageContent() {
               </div>
             ) : connectionStatus === 'offline' ? (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
-                <p style={{ fontSize: '1rem', color: '#ef4444', marginBottom: '10px' }}>🔴 Hors ligne</p>
+                <p style={{ fontSize: '1rem', color: '#ef4444', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><IconStatusDot color="#ef4444" size={12} /> Hors ligne</p>
                 <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>Impossible de se connecter au chat</p>
               </div>
             ) : messages.length === 0 ? (
@@ -667,7 +789,7 @@ function ChatPageContent() {
                         <div className="message-details">
                           <div className="username-display">
                             {message.username}
-                            {message.isArtist && ' 🎵'}
+                            {message.isArtist && <><IconMusic size={14} style={{ marginLeft: 4, verticalAlign: 'middle' }} /></>}
                           </div>
                         </div>
                       </div>
@@ -807,7 +929,7 @@ function ChatPageContent() {
                                               textDecoration: 'none',
                                             }}
                                           >
-                                            📎 {attachment.name}
+                                            <IconAttachment size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> {attachment.name}
                                             <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
                                               ({(attachment.size / 1024).toFixed(1)} KB)
                                             </span>
@@ -1119,7 +1241,7 @@ function ChatPageContent() {
                     fontSize: '0.85rem',
                   }}
                 >
-                  <span>{getMediaType(file) === 'image' ? '🖼️' : getMediaType(file) === 'video' ? '🎥' : '📎'}</span>
+                  <span>{getMediaType(file) === 'image' ? <IconImage size={16} /> : getMediaType(file) === 'video' ? <IconVideo size={16} /> : <IconAttachment size={16} />}</span>
                   <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {file.name}
                   </span>
@@ -1179,7 +1301,7 @@ function ChatPageContent() {
               }}
               title="Joindre un fichier"
             >
-              📎
+              <IconAttachment size={18} />
             </button>
             
             <input
@@ -1274,8 +1396,6 @@ function ChatPageContent() {
           </div>
         </div>
       </div>
-
-      <ToastContainer toasts={toasts} onClose={closeToast} />
     </main>
   );
 }

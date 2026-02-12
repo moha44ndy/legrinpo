@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -18,6 +18,12 @@ import {
   Timestamp,
   increment,
 } from 'firebase/firestore';
+
+export interface RoomMember {
+  userId: string;
+  username: string;
+}
+
 import { rewardForComment, processReaction, removeReaction } from '@/utils/wallet';
 import { registerRoomMetadata } from '@/utils/room-metadata';
 
@@ -66,9 +72,20 @@ export function useChat({
 }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'connecting' | 'offline'>('connecting');
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'connecting' | 'offline' | 'removed'>('connecting');
   const [passwordVerified, setPasswordVerified] = useState(false);
+  const [roomCreatorId, setRoomCreatorId] = useState<string | null>(null);
+  const [removedUserIds, setRemovedUserIds] = useState<string[]>([]);
+  const [roomMembers, setRoomMembers] = useState<Record<string, { username: string }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isCreator = !!roomId && !!userId && roomCreatorId === userId;
+  const isRemovedFromGroup = removedUserIds.includes(userId);
+  const members: RoomMember[] = useMemo(() => {
+    return Object.entries(roomMembers)
+      .filter(([id]) => !removedUserIds.includes(id))
+      .map(([uid, data]) => ({ userId: uid, username: data?.username || 'Anonyme' }));
+  }, [roomMembers, removedUserIds]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,7 +96,8 @@ export function useChat({
   }, []);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
+    let unsubscribeMessages: (() => void) | null = null;
+    let unsubscribeRoom: (() => void) | null = null;
 
     const init = async () => {
       try {
@@ -101,19 +119,36 @@ export function useChat({
               setConnectionStatus('offline');
               return;
             }
+            const removed = roomData.removedUserIds || [];
+            setRoomCreatorId(roomData.createdBy || null);
+            setRemovedUserIds(removed);
+            setRoomMembers(roomData.members || {});
+            if (removed.includes(userId)) {
+              setConnectionStatus('removed');
+              return;
+            }
             setPasswordVerified(true);
+            // Ajouter l'utilisateur actuel à la liste des membres s'il n'y est pas déjà
+            await updateDoc(roomRef, {
+              [`members.${userId}`]: { username, joinedAt: serverTimestamp() },
+            });
           } else {
-            // Créer le salon avec le mot de passe
+            // Créer le salon avec le mot de passe et ajouter le créateur comme premier membre
             await setDoc(roomRef, {
               password: roomPassword,
               createdAt: serverTimestamp(),
               createdBy: userId,
               roomType: 'private',
+              removedUserIds: [],
+              members: { [userId]: { username, joinedAt: serverTimestamp() } },
             });
             
             // Enregistrer les métadonnées du groupe pour le bonus mensuel
             await registerRoomMetadata(roomId, userId, 'private');
             
+            setRoomCreatorId(userId);
+            setRemovedUserIds([]);
+            setRoomMembers({ [userId]: { username } });
             setPasswordVerified(true);
           }
         } else if (!isPrivateRoom) {
@@ -129,6 +164,21 @@ export function useChat({
           return;
         }
 
+        // Écouter les paramètres du groupe (créateur, exclus) pour les salons privés
+        if (isPrivateRoom) {
+          const roomRef = doc(db, 'chats', roomId, 'room_info', 'settings');
+          unsubscribeRoom = onSnapshot(roomRef, (snap) => {
+            if (snap.exists()) {
+              const d = snap.data();
+              setRoomCreatorId(d.createdBy || null);
+              const removed = d.removedUserIds || [];
+              setRemovedUserIds(removed);
+              setRoomMembers(d.members || {});
+              if (removed.includes(userId)) setConnectionStatus('removed');
+            }
+          });
+        }
+
         // Écouter les messages
         if (!db) {
           setConnectionStatus('offline');
@@ -139,7 +189,7 @@ export function useChat({
         const messagesRef = collection(db, 'chats', roomId, 'messages');
         const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100));
 
-        unsubscribe = onSnapshot(
+        unsubscribeMessages = onSnapshot(
           q,
           (snapshot) => {
             const newMessages: ChatMessage[] = [];
@@ -187,9 +237,8 @@ export function useChat({
     init();
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      unsubscribeMessages?.();
+      unsubscribeRoom?.();
     };
   }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, scrollToBottomInstant]);
 
@@ -330,6 +379,28 @@ export function useChat({
     [roomId, userId]
   );
 
+  const removeMember = useCallback(
+    async (memberUserId: string) => {
+      if (!db || !roomId || !isPrivateRoom || roomCreatorId !== userId) return;
+      if (memberUserId === roomCreatorId) return; // Ne pas retirer le créateur
+      try {
+        const roomRef = doc(db, 'chats', roomId, 'room_info', 'settings');
+        const roomDoc = await getDoc(roomRef);
+        if (!roomDoc.exists()) return;
+        const data = roomDoc.data();
+        const current = data.removedUserIds || [];
+        if (current.includes(memberUserId)) return;
+        await updateDoc(roomRef, {
+          removedUserIds: [...current, memberUserId],
+          updatedAt: serverTimestamp(),
+        });
+      } catch (error) {
+        console.error('Erreur lors du retrait du membre:', error);
+      }
+    },
+    [roomId, isPrivateRoom, roomCreatorId, userId]
+  );
+
   return {
     messages,
     isConnected,
@@ -341,6 +412,11 @@ export function useChat({
     toggleReaction,
     messagesEndRef,
     scrollToBottom,
+    isCreator,
+    isRemovedFromGroup,
+    roomCreatorId,
+    members,
+    removeMember,
   };
 }
 
