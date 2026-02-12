@@ -8,7 +8,9 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: #0a0e27;
     color: #ffffff;
-    height: 100vh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -33,6 +35,7 @@
     font-weight: 600;
     color: #4a9eff;
     flex: 1;
+    min-width: 0;
     text-align: center;
 }
 
@@ -169,7 +172,10 @@
 /* Chat List */
 .chat-list {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
     background: #0a0e27;
     padding-bottom: 0;
     margin-bottom: 0;
@@ -576,116 +582,72 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .header-top {
-        flex-wrap: wrap;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        position: relative;
+    .wa-header {
+        padding: 10px 12px 8px;
     }
 
     .header-title {
-        order: 1;
-        font-size: 24px;
-        width: 100%;
-        margin-bottom: 4px;
-        position: relative;
-        padding-left: 0;
-        padding-right: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    .menu-btn,
-    .new-chat-btn {
-        order: 2;
-        position: static;
-    }
-
-    .header-actions {
-        order: 3;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        position: relative;
+        font-size: 18px;
     }
 
     .header-actions > div {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        justify-content: space-between;
-        width: 100%;
-        position: relative;
-        padding-left: 88px;
+        min-width: 0;
+        flex-shrink: 0;
     }
 
-    .header-actions > div > .wallet-container-compact,
-    .header-actions > div > .wallet-container {
-        position: absolute;
-        left: 30%;
-        transform: translateX(-50%);
-        top: 0;
-        z-index: 1;
-        font-size: 0.65rem;
+    .header-actions .wallet-container-compact .wallet-header-compact {
+        padding: 4px 8px;
+        gap: 4px;
     }
 
-    .header-actions > div > .wallet-container-compact .wallet-header-compact,
-    .header-actions > div > .wallet-container .wallet-header {
-        font-size: 0.65rem;
-        padding: 3px 8px;
+    .header-actions .wallet-username-compact {
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 12px;
     }
 
-    .header-actions > div > .wallet-container-compact .wallet-balance-compact,
-    .header-actions > div > .wallet-container .wallet-balance {
-        font-size: 0.65rem;
-    }
-
-    .header-actions > div > span {
-        position: static;
-        font-size: 13px;
-        margin-right: 0;
-    }
-
-    .header-actions .header-btn:last-child {
-        position: static;
-        width: 28px;
-        height: 28px;
-        padding: 4px;
-        margin-left: -12px;
-    }
-
-    .header-actions .header-btn:last-child svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .menu-btn,
-    .new-chat-btn {
-        position: absolute;
-        bottom: 0;
-    }
-
-    .menu-btn {
-        left: 16px;
-        bottom: 0;
-    }
-
-    .new-chat-btn {
-        left: 60px;
-        bottom: 0;
+    .header-actions .wallet-balance-compact {
+        font-size: 12px;
     }
     
     .chat-item {
-        padding: 12px 16px;
+        padding: 10px 12px;
+        gap: 10px;
     }
     
     .avatar-circle {
         width: 48px;
         height: 48px;
         font-size: 18px;
+    }
+
+    .chat-name {
+        font-size: 14px;
+    }
+
+    .chat-message {
+        font-size: 12px;
+    }
+
+    .chat-filters {
+        padding: 10px 12px;
+        gap: 4px;
+    }
+
+    .filter-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .modal-content {
+        margin: 12px;
+        max-height: 85vh;
+    }
+
+    .modal-content.large {
+        max-width: calc(100% - 24px);
     }
 
     .public-room-grid {
@@ -721,116 +683,60 @@
 }
 
 @media (max-width: 480px) {
-    .header-top {
-        flex-wrap: wrap;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        position: relative;
+    .wa-header {
+        padding: 8px 10px 6px;
     }
 
     .header-title {
-        order: 1;
-        font-size: 20px;
-        width: 100%;
-        margin-bottom: 4px;
-        position: relative;
-        padding-left: 0;
-        padding-right: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
+        font-size: 16px;
     }
 
-    .menu-btn,
-    .new-chat-btn {
-        order: 2;
-        position: static;
+    .header-actions .wallet-username-compact {
+        max-width: 40px;
+        font-size: 11px;
     }
 
-    .header-actions {
-        order: 3;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        position: relative;
+    .header-actions .wallet-balance-compact {
+        font-size: 11px;
     }
 
-    .header-actions > div {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        justify-content: space-between;
-        width: 100%;
-        position: relative;
-        padding-left: 88px;
+    .chat-item {
+        padding: 8px 10px;
+        gap: 8px;
     }
 
-    .header-actions > div > .wallet-container-compact,
-    .header-actions > div > .wallet-container {
-        position: absolute;
-        left: 25%;
-        transform: translateX(-50%);
-        top: 0;
-        z-index: 1;
-        font-size: 0.6rem;
+    .avatar-circle {
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
     }
 
-    .header-actions > div > .wallet-container-compact .wallet-header-compact,
-    .header-actions > div > .wallet-container .wallet-header {
-        font-size: 0.6rem;
-        padding: 2px 6px;
-    }
-
-    .header-actions > div > .wallet-container-compact .wallet-balance-compact,
-    .header-actions > div > .wallet-container .wallet-balance {
-        font-size: 0.6rem;
-    }
-
-    .header-actions > div > span {
-        position: static;
-        font-size: 12px;
-        margin-right: 0;
-    }
-
-    .header-actions .header-btn:last-child {
-        position: static;
-        width: 26px;
-        height: 26px;
-        padding: 4px;
-        margin-left: -12px;
-    }
-
-    .header-actions .header-btn:last-child svg {
-        width: 14px;
-        height: 14px;
-    }
-
-    .menu-btn,
-    .new-chat-btn {
-        position: absolute;
-        bottom: 0;
-    }
-
-    .menu-btn {
-        left: 12px;
-        bottom: 0;
-    }
-
-    .new-chat-btn {
-        left: 56px;
-        bottom: 0;
-    }
-    
-    .filter-btn {
-        padding: 6px 12px;
+    .chat-name {
         font-size: 13px;
     }
 
+    .filter-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
     .modal-content {
-        padding: 20px;
-        max-height: 95vh;
+        padding: 16px;
+        margin: 8px;
+        max-height: 90vh;
+    }
+
+    .modal-content.large {
+        max-width: calc(100% - 16px);
+    }
+
+    .public-room-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .public-room-btn {
+        padding: 12px 8px;
     }
 }
 

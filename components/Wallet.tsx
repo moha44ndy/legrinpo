@@ -1,6 +1,8 @@
 'use client';
 
 import { useWallet } from '@/hooks/useWallet';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { IconWallet, IconRefresh, IconWithdraw, IconCheck } from '@/components/Icons';
 import './Wallet.css';
@@ -31,6 +33,8 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   }
 
   const { wallet, balance, loading, error, refreshBalance } = useWallet(userId);
+  const { logout } = useAuth();
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawSent, setWithdrawSent] = useState(false);
@@ -78,11 +82,13 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           title="Cliquez pour voir les détails"
         >
           <IconWallet size={14} className="wallet-icon-compact" />
+          {username && <span className="wallet-username-compact">{username.toUpperCase()}</span>}
           <span className="wallet-balance-compact">{balance.toFixed(2)} FCFA</span>
         </div>
         
         {isExpanded && wallet && (
           <div className="wallet-details">
+          {username && <p className="wallet-details-username">{username.toUpperCase()}</p>}
           <button 
             className="wallet-refresh-btn"
             onClick={(e) => {
@@ -102,6 +108,19 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
             }}
           >
             <IconWithdraw size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Retirer mon argent
+          </button>
+          <button 
+            type="button"
+            className="wallet-logout-btn"
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) return;
+              setIsExpanded(false);
+              await logout();
+              router.push('/login');
+            }}
+          >
+            Déconnexion
           </button>
           {balance > 0 && balance < MIN_WITHDRAWAL && (
             <p className="wallet-withdraw-hint">Retrait à partir de {MIN_WITHDRAWAL.toLocaleString()} FCFA</p>

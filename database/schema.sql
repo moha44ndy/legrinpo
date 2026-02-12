@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS user_unread_rooms (
 -- Insérer quelques discussions publiques par défaut
 INSERT INTO rooms (room_id, name, description, type) VALUES
 ('public_aes', 'AES', 'Alliance des États du Sahel', 'public'),
-('public_cedeao', 'CEDEAO', 'Communauté Économique des États de l\'Afrique de l\'Ouest', 'public'),
+('public_cemac', 'CEMAC', 'Communauté Économique et Monétaire de l\'Afrique Centrale', 'public'),
 ('public_uemoa', 'UEMOA', 'Union Économique et Monétaire Ouest Africaine', 'public'),
 ('public_autres', 'Globale Organisation', 'Organisation Globale', 'public')
 ON DUPLICATE KEY UPDATE name=VALUES(name);

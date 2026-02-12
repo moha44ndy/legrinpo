@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
 import Wallet from '@/components/Wallet';
-import { IconGlobe, IconHandshake, IconBriefcase, IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
+import { IconGlobe, IconAes, IconCemac, IconUemoa, IconHandshake, IconBriefcase, IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
 import '../globals.css';
 import './canaldiscussion-wa.css';
 
-type PublicIconKey = 'globe' | 'handshake' | 'briefcase' | 'globeAlt';
+type PublicIconKey = 'globe' | 'aes' | 'cemac' | 'uemoa' | 'handshake' | 'briefcase' | 'globeAlt';
 
 interface ChatItem {
   id: string;
@@ -29,7 +29,7 @@ interface ChatItem {
 
 export default function CanalDiscussionPage() {
   const router = useRouter();
-  const { user, userProfile, loading: authLoading, logout } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user, ou générer un ID temporaire
   const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : `temp_${Date.now()}`);
@@ -57,8 +57,6 @@ export default function CanalDiscussionPage() {
   const [createdRoomPassword, setCreatedRoomPassword] = useState<string | null>(null);
   const [modalMessage, setModalMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
   const [history, setHistory] = useState<RoomHistory>({ created: [], joined: [] });
   const [allChats, setAllChats] = useState<ChatItem[]>([]);
   const [filteredChats, setFilteredChats] = useState<ChatItem[]>([]);
@@ -170,9 +168,9 @@ export default function CanalDiscussionPage() {
 
       // Ajouter les discussions publiques par défaut
       const publicRooms: { id: string; name: string; description: string; iconKey: PublicIconKey }[] = [
-        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', iconKey: 'globe' },
-        { id: 'public_cedeao', name: 'CEDEAO', description: 'Communauté Économique', iconKey: 'handshake' },
-        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', iconKey: 'briefcase' },
+        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', iconKey: 'aes' },
+        { id: 'public_cemac', name: 'CEMAC', description: 'Communauté Économique et Monétaire', iconKey: 'cemac' },
+        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', iconKey: 'uemoa' },
         { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', iconKey: 'globeAlt' }
       ];
 
@@ -413,7 +411,7 @@ export default function CanalDiscussionPage() {
   const handleJoinPublic = (roomType: string = 'aes') => {
     const publicRooms: { [key: string]: { id: string; name: string } } = {
       aes: { id: 'public_aes', name: 'AES' },
-      cedeao: { id: 'public_cedeao', name: 'CEDEAO' },
+      cemac: { id: 'public_cemac', name: 'CEMAC' },
       uemoa: { id: 'public_uemoa', name: 'UEMOA' },
       autres: { id: 'public_autres', name: 'Globale Organisation' }
     };
@@ -631,18 +629,6 @@ export default function CanalDiscussionPage() {
           <div className="header-actions">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {userId && <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />}
-              <span style={{ color: '#4a9eff', fontSize: '18px', fontWeight: '600' }}>{username.toUpperCase()}</span>
-              <button 
-                className="header-btn" 
-                onClick={() => setShowLogoutConfirm(true)}
-                title="Déconnexion"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M16 17L21 12L16 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 12H9" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -696,13 +682,13 @@ export default function CanalDiscussionPage() {
               .map((chat) => {
                 const publicRoomInfo: { [key: string]: { description: string } } = {
                   'public_aes': { description: 'Alliance des États du Sahel' },
-                  'public_cedeao': { description: 'Communauté Économique' },
+                  'public_cemac': { description: 'Communauté Économique et Monétaire' },
                   'public_uemoa': { description: 'Union Économique' },
                   'public_autres': { description: 'Organisation Globale' }
                 };
                 const info = publicRoomInfo[chat.id] || { description: '' };
                 const iconKey = chat.iconKey || 'globeAlt';
-                const PublicIcon = iconKey === 'globe' ? IconGlobe : iconKey === 'handshake' ? IconHandshake : iconKey === 'briefcase' ? IconBriefcase : IconGlobeAlt;
+                const PublicIcon = iconKey === 'aes' ? IconAes : iconKey === 'cemac' ? IconCemac : iconKey === 'uemoa' ? IconUemoa : iconKey === 'globe' ? IconGlobe : iconKey === 'handshake' ? IconHandshake : iconKey === 'briefcase' ? IconBriefcase : IconGlobeAlt;
                 return (
                   <button
                     key={chat.id}
@@ -941,34 +927,6 @@ export default function CanalDiscussionPage() {
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal confirmation déconnexion */}
-      {showLogoutConfirm && (
-        <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Déconnexion</h3>
-            <p style={{ margin: '16px 0', color: 'rgba(255,255,255,0.9)', fontSize: 15 }}>
-              Êtes-vous sûr de vouloir vous déconnecter ?
-            </p>
-            <div className="modal-actions" style={{ marginTop: 20 }}>
-              <button className="modal-btn cancel" onClick={() => setShowLogoutConfirm(false)}>
-                Annuler
-              </button>
-              <button
-                className="modal-btn confirm"
-                style={{ background: 'rgba(239, 68, 68, 0.9)', borderColor: '#ef4444' }}
-                onClick={async () => {
-                  setShowLogoutConfirm(false);
-                  await logout();
-                  router.push('/login');
-                }}
-              >
-                Se déconnecter
-              </button>
-            </div>
           </div>
         </div>
       )}

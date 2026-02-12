@@ -55,7 +55,7 @@ function ChatPageContent() {
     if (!roomId) return 'Discussion';
     const roomNames: { [key: string]: string } = {
       'public_aes': 'AES - Alliance des États du Sahel',
-      'public_cedeao': 'CEDEAO - Communauté Économique des États de l\'Afrique de l\'Ouest',
+      'public_cemac': 'CEMAC - Communauté Économique et Monétaire de l\'Afrique Centrale',
       'public_uemoa': 'UEMOA - Union Économique et Monétaire Ouest Africaine',
       'public_autres': 'Globale Organisation'
     };

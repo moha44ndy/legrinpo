@@ -64,6 +64,79 @@ export function IconGlobe({ size = defaultSize, className, style }: IconProps) {
   );
 }
 
+/** Logo AES - Alliance des États du Sahel (soleil + 3 étoiles), en blanc */
+export function IconAes({ size = defaultSize, className, style }: IconProps) {
+  const white = '#fff';
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
+      {/* Cercle / bord */}
+      <circle cx="12" cy="12" r="10" stroke={white} strokeWidth="1.5" fill="none"/>
+      {/* Soleil central */}
+      <circle cx="12" cy="12" r="4" fill={white}/>
+      {/* Rayons du soleil */}
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+        const rad = (deg * Math.PI) / 180;
+        const x1 = 12 + 4 * Math.cos(rad);
+        const y1 = 12 + 4 * Math.sin(rad);
+        const x2 = 12 + 7 * Math.cos(rad);
+        const y2 = 12 + 7 * Math.sin(rad);
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={white} strokeWidth="1.2" strokeLinecap="round"/>;
+      })}
+      {/* Trois étoiles (Mali, Niger, Burkina Faso) */}
+      <path d="M12 3l.6 1.8h1.8l-1.45 1.05.55 1.8L12 6.6l-1.5 1.05.55-1.8L9.6 4.8h1.8L12 3z" fill={white}/>
+      <path d="M7 8.5l.5 1.5h1.5l-1.2.9.45 1.5L7 11.4l-1.25.9.45-1.5L5 10h1.5L7 8.5z" fill={white}/>
+      <path d="M17 8.5l.5 1.5h1.5l-1.2.9.45 1.5L17 11.4l-1.25.9.45-1.5L15 10h1.5L17 8.5z" fill={white}/>
+    </svg>
+  );
+}
+
+/** Étoile 5 branches centrée en (12, 12), réutilisable */
+const starPath5 = 'M12 9.2l.6 1.8h1.8l-1.45 1.05.55 1.8L12 12.8l-1.5 1.05.55-1.8L9.6 11h1.8L12 9.2z';
+
+/** Logo CEMAC - style CEDEAO/ECOWAS (cercle + tambour stylisé), en blanc */
+export function IconCemac({ size = defaultSize, className, style }: IconProps) {
+  const white = '#fff';
+  const cx = 12;
+  const cy = 12;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
+      {/* Cercle extérieur (motif circulaire CEDEAO) */}
+      <circle cx={cx} cy={cy} r="10" stroke={white} strokeWidth="1.5" fill="none"/>
+      <circle cx={cx} cy={cy} r="7" stroke={white} strokeWidth="1" fill="none"/>
+      {/* Tambour stylisé (symbole CEDEAO/ECOWAS) */}
+      <ellipse cx={cx} cy={cy - 2} rx="4" ry="1.8" stroke={white} strokeWidth="1.2" fill="none"/>
+      <ellipse cx={cx} cy={cy + 2} rx="4" ry="1.8" stroke={white} strokeWidth="1.2" fill="none"/>
+      <line x1={cx - 4} y1={cy - 2} x2={cx - 4} y2={cy + 2} stroke={white} strokeWidth="1.2"/>
+      <line x1={cx + 4} y1={cy - 2} x2={cx + 4} y2={cy + 2} stroke={white} strokeWidth="1.2"/>
+      <ellipse cx={cx} cy={cy} rx="3.2" ry="0.9" fill={white} opacity={0.9}/>
+    </svg>
+  );
+}
+
+/** Logo UEMOA - Union Économique et Monétaire Ouest Africaine (8 étoiles), en blanc */
+export function IconUemoa({ size = defaultSize, className, style }: IconProps) {
+  const white = '#fff';
+  const cx = 12;
+  const cy = 12;
+  const R = 6.5;
+  const starScale = 0.45;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
+      <circle cx={cx} cy={cy} r="10" stroke={white} strokeWidth="1.5" fill="none"/>
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+        const rad = (deg * Math.PI) / 180;
+        const x = cx + R * Math.cos(rad);
+        const y = cy + R * Math.sin(rad);
+        return (
+          <g key={i} transform={`translate(${x}, ${y}) scale(${starScale}) translate(-12, -12)`}>
+            <path d={starPath5} fill={white}/>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export function IconChat({ size = defaultSize, className, style }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
