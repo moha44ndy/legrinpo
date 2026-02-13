@@ -632,50 +632,14 @@ export default function CanalDiscussionPage() {
             </div>
           </div>
         </div>
-        <div className="search-container">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Rechercher une discussion..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <span className="search-icon"><IconSearch size={18} /></span>
+        <div className="ad-bar">
+          <span className="ad-bar-label">Espace publicitaire</span>
         </div>
       </header>
-
-      {/* Chat Filters */}
-      <div className="chat-filters">
-        <button
-          className={`filter-btn ${currentFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('all')}
-        >
-          Tous
-        </button>
-        <button
-          className={`filter-btn ${currentFilter === 'groups' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('groups')}
-        >
-          Groupes {groupsCount > 0 && <span className="filter-count">{groupsCount}</span>}
-        </button>
-        <button
-          className={`filter-btn ${currentFilter === 'unread' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('unread')}
-        >
-          Non lues {unreadCount > 0 && <span className="filter-count">{unreadCount}</span>}
-        </button>
-        <button
-          className={`filter-btn ${currentFilter === 'favorites' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('favorites')}
-        >
-          Favoris {favoritesCount > 0 && <span className="filter-count">{favoritesCount}</span>}
-        </button>
-      </div>
 
       {/* Public Rooms Section */}
       {currentFilter === 'all' && (
         <div className="public-rooms-section">
-          <h4 className="public-rooms-title">Discussions Publiques</h4>
           <div className="public-room-grid">
             {allChats
               .filter(chat => chat.id.startsWith('public_'))
@@ -704,102 +668,6 @@ export default function CanalDiscussionPage() {
           </div>
         </div>
       )}
-
-      {/* Chat List */}
-      <div className="chat-list">
-        {filteredChats.filter(chat => !chat.id.startsWith('public_')).length === 0 ? (
-          <div className="empty-state">
-            <p>Aucune discussion</p>
-            <small>Créez votre première discussion pour commencer</small>
-          </div>
-        ) : (
-          filteredChats.filter(chat => !chat.id.startsWith('public_')).map((chat) => {
-            const time = formatTime(chat.timestamp);
-            const avatar = chat.avatar;
-
-            return (
-              <div key={chat.id} className="chat-item" onClick={() => handleRejoinRoom(chat)}>
-                <div className="chat-avatar">
-                  <div
-                    className="avatar-circle"
-                    style={{
-                      background: `linear-gradient(135deg, ${avatar.color} 0%, ${adjustColor(avatar.color, -20)} 100%)`
-                    }}
-                  >
-                    {avatar.char}
-                  </div>
-                </div>
-                <div className="chat-content">
-                  <div className="chat-header">
-                    <span className="chat-name">
-                      {chat.name}
-                      {unreadChats.has(chat.id) && <span className="unread-badge" style={{ marginLeft: '8px' }}>●</span>}
-                    </span>
-                    <span className="chat-time">
-                      {time}
-                    </span>
-                  </div>
-                  {chat.room.description && (
-                    <div className="chat-description" style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
-                      {chat.room.description}
-                    </div>
-                  )}
-                  <div className="chat-preview">
-                    <span className="chat-message">{chat.lastMessage}</span>
-                  </div>
-                </div>
-                <div className="chat-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button 
-                    className="chat-action-btn"
-                    onClick={(e) => toggleFavorite(chat.id, e)}
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      fontSize: '18px', 
-                      cursor: 'pointer',
-                      color: favorites.has(chat.id) ? '#4a9eff' : 'rgba(255, 255, 255, 0.4)'
-                    }}
-                    title={favorites.has(chat.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                  >
-                    <IconStar size={18} filled={favorites.has(chat.id)} />
-                  </button>
-                  <button 
-                    className="chat-action-btn"
-                    onClick={(e) => toggleUnread(chat.id, e)}
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      fontSize: '18px', 
-                      cursor: 'pointer',
-                      color: unreadChats.has(chat.id) ? '#4a9eff' : 'rgba(255, 255, 255, 0.4)'
-                    }}
-                    title={unreadChats.has(chat.id) ? 'Marquer comme lu' : 'Marquer comme non lu'}
-                  >
-                    <span style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      background: unreadChats.has(chat.id) ? '#4a9eff' : 'rgba(255,255,255,0.3)',
-                      display: 'inline-block'
-                    }} />
-                  </button>
-                  {!chat.id.startsWith('public_') && (
-                    <button 
-                      className="chat-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRoom(chat.id);
-                      }}
-                    >
-                      <IconTrash size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
 
       {/* Modal unique : Créer / Rejoindre une discussion */}
       {showJoinModal && (
