@@ -1203,7 +1203,6 @@ function ChatPageContent() {
             )}
             <div ref={messagesEndRef} style={{ paddingBottom: '40px', minHeight: '40px' }} />
           </div>
-        </div>
 
         <div className="input-container">
           {/* Fichiers sélectionnés */}
@@ -1352,6 +1351,7 @@ function ChatPageContent() {
               </button>
             ) : null}
           </div>
+        </div>
         </div>
       </div>
     </main>

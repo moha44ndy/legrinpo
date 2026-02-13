@@ -220,7 +220,7 @@
             top: 72px;
             left: 0;
             right: 0;
-            bottom: 100px;
+            bottom: 0;
             display: flex;
             flex-direction: column;
             background: #0a0e27;
@@ -230,8 +230,7 @@
         .messages {
             flex: 1;
             min-height: 0;
-            padding: 20px;
-            padding-bottom: 60px;
+            padding: 20px 20px 0 20px;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
@@ -506,16 +505,16 @@
             border-left: 3px solid #4a9eff;
         }
 
-        /* Input container fixe en bas (style messagerie) */
+        /* Barre de message : dans la section messages, en bas, la zone messages dépasse en dessous */
         .input-container {
-            position: fixed;
+            position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             width: 100%;
-            z-index: 999;
-            padding: 10px 14px 14px 14px;
-            padding-bottom: max(14px, env(safe-area-inset-bottom));
+            z-index: 2;
+            padding: 8px 14px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
             padding-left: max(14px, env(safe-area-inset-left));
             padding-right: max(14px, env(safe-area-inset-right));
             background: transparent;
@@ -755,9 +754,9 @@
                 font-size: 0.9rem;
             }
 
-        .chat-content {
-            top: 90px;
-                bottom: 75px;
+            .chat-content {
+                top: 90px;
+                bottom: 0;
             }
 
             .typing-indicator {
@@ -767,8 +766,7 @@
             }
 
             .messages {
-                padding: 12px 8px;
-                padding-bottom: 50px;
+                padding: 12px 8px 0 8px;
             }
 
             .message-bubble {
