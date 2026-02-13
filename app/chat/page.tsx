@@ -4,9 +4,8 @@ import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, FileAttachment } from '@/hooks/useChat';
-import Wallet from '@/components/Wallet';
 import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
-import { IconLock, IconGlobe, IconChat, IconStatusDot, IconAttachment, IconImage, IconVideo, IconMusic, IconSettings, IconTrash } from '@/components/Icons';
+import { IconLock, IconStatusDot, IconAttachment, IconImage, IconVideo, IconMusic, IconSettings, IconTrash } from '@/components/Icons';
 import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
 import { v4 as uuidv4 } from 'uuid';
 import '../globals.css';
@@ -50,13 +49,13 @@ function ChatPageContent() {
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
   
-  // Noms des discussions publiques
+  // Noms pour les descriptions (sous le header)
   const getPublicRoomName = (roomId: string | null) => {
     if (!roomId) return 'Discussion';
     const roomNames: { [key: string]: string } = {
-      'public_aes': 'AES - Alliance des États du Sahel',
-      'public_cemac': 'CEMAC - Communauté Économique et Monétaire de l\'Afrique Centrale',
-      'public_uemoa': 'UEMOA - Union Économique et Monétaire Ouest Africaine',
+      'public_aes': 'AES',
+      'public_cemac': 'CEMAC',
+      'public_uemoa': 'UEMOA',
       'public_autres': 'Globale Organisation'
     };
     return roomNames[roomId] || 'Discussion';
@@ -569,50 +568,34 @@ function ChatPageContent() {
     );
   }
 
+  const chatTitle = isPublicRoom ? getPublicRoomName(roomId) : 'Discussion privée';
+  const chatSubtitle = members.length > 0 ? `${members.length} membre${members.length > 1 ? 's' : ''}` : '';
+
   return (
     <main className="chat-main-container">
-      <div className="chat-header-fixed">
-        <a href="/canaldiscussion" className="leave-btn">
-          ← Retour
+      <div className="chat-header-fixed chat-header-messenger">
+        <a href="/canaldiscussion" className="leave-btn" title="Retour" aria-label="Retour">
+          ‹
         </a>
-        <div className="header-content-wrapper">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
-            <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} title={
+        <div className="chat-header-center">
+          <div className="chat-header-title-container">
+            <h1 className="chat-header-title">{chatTitle}</h1>
+            {chatSubtitle && <p className="chat-header-subtitle">{chatSubtitle}</p>}
+          </div>
+        </div>
+        <div className="chat-header-right">
+          <div
+            className="chat-header-status-right"
+            title={
               connectionStatus === 'online' ? 'Connecté' :
               connectionStatus === 'connecting' ? 'Connexion...' :
               'Hors ligne'
-            } />
-            <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />
+            }
+          >
+            <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} />
           </div>
-          <h1>
-            {isPublicRoom ? <><IconGlobe size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} />{getPublicRoomName(roomId)}</> : isPrivateRoom ? <><IconLock size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Discussion Privée</> : <><IconChat size={22} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Discussion</>}
-          </h1>
-          <div className="room-info">
-            {isPublicRoom ? `Discussion Publique - ${getPublicRoomName(roomId)}` : `Discussion: ${roomId?.substring(0, 20)}...`}
-          </div>
-          <div className="participants-info" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-            {messages.length > 0 && `${new Set(messages.map((m) => m.userId)).size} participant(s)`}
-            {isPrivateRoom && isCreator && (
-              <button
-                type="button"
-                onClick={() => setShowGroupSettingsModal(true)}
-                title="Paramètres du groupe"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  background: 'rgba(74, 158, 255, 0.2)',
-                  border: '1px solid rgba(74, 158, 255, 0.4)',
-                  borderRadius: 8,
-                  color: '#4a9eff',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <IconSettings size={18} /> Paramètres du groupe
-              </button>
-            )}
+          <div className="chat-header-avatar" title={username}>
+            {username.charAt(0).toUpperCase()}
           </div>
         </div>
       </div>
@@ -700,6 +683,11 @@ function ChatPageContent() {
 
       <div className="chat-container">
         <div className="chat-content">
+          {/* Message épinglé (placeholder - pas de donnée backend pour l'instant) */}
+          <div className="pinned-message-bar" style={{ display: 'none' }}>
+            <span className="pinned-label">Message épinglé</span>
+            <span className="pinned-preview">—</span>
+          </div>
           {bannerMessage && (
             <div
               className="chat-banner-message"
@@ -1288,20 +1276,12 @@ function ChatPageContent() {
             {/* Bouton pour sélectionner des fichiers */}
             <button
               type="button"
+              className="input-attach-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={!isConnected || uploading}
-              style={{
-                padding: '8px 12px',
-                background: 'rgba(74, 158, 255, 0.1)',
-                border: '1px solid rgba(74, 158, 255, 0.3)',
-                borderRadius: '6px',
-                color: '#4a9eff',
-                cursor: 'pointer',
-                fontSize: '18px',
-              }}
               title="Joindre un fichier"
             >
-              <IconAttachment size={18} />
+              <IconAttachment size={20} />
             </button>
             
             <input
@@ -1316,7 +1296,7 @@ function ChatPageContent() {
             <input
               type="text"
               className="message-input"
-              placeholder={isConnected ? 'Tapez votre message...' : 'Connexion en cours...'}
+              placeholder={isConnected ? 'Message' : 'Connexion...'}
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -1324,11 +1304,12 @@ function ChatPageContent() {
               style={{ flex: 1 }}
             />
             
-            {/* Bouton pour enregistrer une note vocale (style WhatsApp) */}
+            {/* Bouton pour enregistrer une note vocale */}
             {!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob ? (
               <button
                 ref={micButtonRef}
                 type="button"
+                className={`input-mic-btn ${isHoldingMic && shouldCancelRecording ? 'input-mic-btn-cancel' : ''} ${isHoldingMic ? 'input-mic-btn-holding' : ''}`}
                 onMouseDown={handleMicButtonDown}
                 onMouseMove={handleMicButtonMove}
                 onMouseUp={handleMicButtonUp}
@@ -1337,24 +1318,6 @@ function ChatPageContent() {
                 onTouchMove={handleMicButtonMove}
                 onTouchEnd={handleMicButtonUp}
                 disabled={!isConnected || uploading}
-                style={{
-                  padding: '8px 12px',
-                  background: isHoldingMic 
-                    ? (shouldCancelRecording ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 107, 107, 0.3)')
-                    : 'rgba(255, 107, 107, 0.1)',
-                  border: isHoldingMic
-                    ? (shouldCancelRecording ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 107, 107, 0.6)')
-                    : '1px solid rgba(255, 107, 107, 0.3)',
-                  borderRadius: '6px',
-                  color: isHoldingMic && shouldCancelRecording ? '#ef4444' : '#ff6b6b',
-                  cursor: isHoldingMic ? 'grabbing' : 'grab',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                }}
                 title={isHoldingMic 
                   ? (shouldCancelRecording ? 'Relâchez pour annuler' : 'Relâchez pour arrêter l\'enregistrement')
                   : 'Maintenez pour enregistrer, glissez vers le haut pour annuler'}
@@ -1373,19 +1336,14 @@ function ChatPageContent() {
             
             {messageInput.trim() || selectedFiles.length > 0 || recordedAudioBlob ? (
               <button
+                type="button"
                 className="send-btn"
                 onClick={handleSendMessage}
                 disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob && !isRecordingVoice)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '14px',
-                  minWidth: '48px',
-                }}
+                title="Envoyer"
               >
                 {uploading ? (
-                  <span style={{ fontSize: '0.9rem' }}>Envoi...</span>
+                  <span className="send-btn-text">Envoi...</span>
                 ) : (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
