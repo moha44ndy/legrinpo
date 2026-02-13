@@ -622,7 +622,7 @@ export default function CanalDiscussionPage() {
       {/* Header */}
       <header className="wa-header">
         <div className="header-top">
-          <button className="header-btn menu-btn" onClick={() => { setJoinModalMode('choice'); setShowJoinModal(true); }}>
+          <button className="header-btn menu-btn" onClick={() => { setJoinModalMode('choice'); setShowJoinModal(true); }} style={{ display: 'none' }} aria-hidden>
             <IconMenu size={20} />
           </button>
           <h1 className="header-title">Discussions</h1>
