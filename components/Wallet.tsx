@@ -55,6 +55,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [helpSubmitting, setHelpSubmitting] = useState(false);
   const [helpError, setHelpError] = useState<string | null>(null);
   const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
+  const [showAvatarPreview, setShowAvatarPreview] = useState(false);
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
 
@@ -101,13 +102,20 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
             <p className="wallet-details-username">
               <span className="wallet-avatar-wrap">
                 {userProfile?.avatar ? (
-                  <img
-                    key={userProfile.avatar}
-                    src={userProfile.avatar}
-                    alt=""
-                    className="wallet-avatar-details wallet-avatar-img"
-                    referrerPolicy="no-referrer"
-                  />
+                  <button
+                    type="button"
+                    className="wallet-avatar-preview-trigger"
+                    onClick={() => setShowAvatarPreview(true)}
+                    title="Voir en grand"
+                  >
+                    <img
+                      key={userProfile.avatar}
+                      src={userProfile.avatar}
+                      alt=""
+                      className="wallet-avatar-details wallet-avatar-img"
+                      referrerPolicy="no-referrer"
+                    />
+                  </button>
                 ) : (
                   <span className="wallet-avatar-details">{username.charAt(0).toUpperCase()}</span>
                 )}
@@ -484,6 +492,30 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
               </form>
             )}
           </div>
+        </div>
+      )}
+
+      {showAvatarPreview && userProfile?.avatar && (
+        <div
+          className="wallet-avatar-preview-overlay"
+          onClick={() => setShowAvatarPreview(false)}
+          aria-label="Fermer l’aperçu"
+        >
+          <button
+            type="button"
+            className="wallet-avatar-preview-close"
+            onClick={() => setShowAvatarPreview(false)}
+            aria-label="Fermer"
+          >
+            ×
+          </button>
+          <img
+            src={userProfile.avatar}
+            alt="Photo de profil"
+            className="wallet-avatar-preview-img"
+            onClick={(e) => e.stopPropagation()}
+            referrerPolicy="no-referrer"
+          />
         </div>
       )}
     </>
