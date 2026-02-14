@@ -987,6 +987,11 @@ function ChatPageContent() {
                                 }
                                 
                                 const getReactionCount = (emoji: string) => reactionCounts[emoji] || 0;
+                                const formatReactionCount = (n: number): string => {
+                                  if (n < 1000) return String(n);
+                                  if (n >= 1e6) return (n / 1e6) % 1 === 0 ? `${n / 1e6}M` : `${(n / 1e6).toFixed(1)}M`;
+                                  return (n / 1000) % 1 === 0 ? `${n / 1000}k` : `${(n / 1000).toFixed(1)}k`;
+                                };
                                 const hasUserReaction = (emoji: string) => message.reactions?.[userId] === emoji;
                                 
                                 return (
@@ -1072,7 +1077,7 @@ function ChatPageContent() {
                                       <span>❤️</span>
                                       {getReactionCount('❤️') > 0 && (
                                         <span style={{ fontSize: '12px', fontWeight: '600' }}>
-                                          {getReactionCount('❤️')}
+                                          {formatReactionCount(getReactionCount('❤️'))}
                                         </span>
                                       )}
                                     </button>
@@ -1148,7 +1153,7 @@ function ChatPageContent() {
                                       <span>😡</span>
                                       {getReactionCount('😡') > 0 && (
                                         <span style={{ fontSize: '12px', fontWeight: '600' }}>
-                                          {getReactionCount('😡')}
+                                          {formatReactionCount(getReactionCount('😡'))}
                                         </span>
                                       )}
                                     </button>
