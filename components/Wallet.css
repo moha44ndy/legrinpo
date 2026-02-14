@@ -41,6 +41,20 @@
   font-size: 14px;
 }
 
+.wallet-avatar-compact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .wallet-username-compact {
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
@@ -55,11 +69,111 @@
 }
 
 .wallet-details-username {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 12px 0;
   font-size: 15px;
   font-weight: 600;
   color: #4a9eff;
-  text-align: center;
+}
+
+.wallet-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wallet-avatar-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.wallet-avatar-details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.wallet-avatar-details.wallet-avatar-img {
+  padding: 0;
+  background: none;
+  object-fit: cover;
+}
+
+.wallet-avatar-plus-wrap {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4a9eff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #1a1f3a;
+  cursor: pointer;
+}
+
+.wallet-avatar-plus-wrap:hover {
+  background: #3a8eef;
+}
+
+.wallet-avatar-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wallet-avatar-plus svg {
+  display: block;
+}
+
+.wallet-avatar-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.wallet-avatar-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: wallet-avatar-spin 0.7s linear infinite;
+}
+
+@keyframes wallet-avatar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wallet-avatar-error {
+  margin: -8px 0 8px 0;
+  font-size: 12px;
+  color: #ff6b6b;
 }
 
 /* Détails du wallet (popup/dropdown) */
@@ -159,6 +273,24 @@
   cursor: not-allowed;
 }
 
+.wallet-help-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.wallet-help-btn:hover {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: rgba(74, 158, 255, 0.4);
+}
+
 .wallet-logout-btn {
   width: 100%;
   margin-top: 8px;
@@ -254,6 +386,19 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
+.help-modal-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 158, 255, 0.2);
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #4a9eff;
+}
+
 .withdraw-modal-title {
   margin: 0;
   font-size: 1.25rem;
@@ -334,7 +479,8 @@
 }
 
 .withdraw-form label input,
-.withdraw-form label select {
+.withdraw-form label select,
+.withdraw-form label textarea {
   display: block;
   width: 100%;
   margin-top: 6px;
@@ -346,16 +492,24 @@
   font-size: 0.95rem;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.withdraw-form label textarea {
+  resize: vertical;
+  min-height: 100px;
 }
 
 .withdraw-form label input:focus,
-.withdraw-form label select:focus {
+.withdraw-form label select:focus,
+.withdraw-form label textarea:focus {
   outline: none;
   border-color: rgba(74, 158, 255, 0.5);
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
 }
 
-.withdraw-form label input::placeholder {
+.withdraw-form label input::placeholder,
+.withdraw-form label textarea::placeholder {
   color: rgba(255, 255, 255, 0.35);
 }
 
@@ -531,6 +685,7 @@
   }
 
   .wallet-refresh-btn,
+  .wallet-help-btn,
   .wallet-withdraw-btn,
   .wallet-logout-btn {
     padding: 10px 14px;

@@ -149,15 +149,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('Utilisateur non connecté');
 
     try {
-      // TODO: Créer une API route pour mettre à jour le profil
-      // Pour l'instant, on met juste à jour l'état local
-      const updatedProfile = {
-        ...userProfile,
-        ...data,
-      } as UserProfile;
-      
-      setUserProfile(updatedProfile);
-      setUser(updatedProfile);
+      const body: Record<string, string | undefined> = {};
+      if (data.avatar !== undefined) body.avatar = data.avatar;
+      if (data.displayName !== undefined) body.displayName = data.displayName;
+      if (data.username !== undefined) body.username = data.username;
+      if (Object.keys(body).length === 0) {
+        const updatedProfile = { ...userProfile, ...data } as UserProfile;
+        setUserProfile(updatedProfile);
+        setUser(updatedProfile);
+        return;
+      }
+
+      // Mise à jour optimiste : afficher tout de suite la nouvelle photo
+      const previousAvatar = userProfile?.avatar;
+      if (body.avatar !== undefined) {
+        const optimisticProfile = { ...userProfile, avatar: body.avatar } as UserProfile;
+        setUserProfile(optimisticProfile);
+        setUser(optimisticProfile);
+      }
+
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (body.avatar !== undefined) {
+          const revertedProfile = { ...userProfile, avatar: previousAvatar } as UserProfile;
+          setUserProfile(revertedProfile);
+          setUser(revertedProfile);
+        }
+        throw new Error(result.error || 'Erreur lors de la mise à jour du profil');
+      }
+
+      if (result.success && result.user) {
+        const updatedProfile = result.user as UserProfile;
+        setUserProfile(updatedProfile);
+        setUser(updatedProfile);
+      } else if (body.avatar !== undefined) {
+        const updatedProfile = { ...userProfile, ...data } as UserProfile;
+        setUserProfile(updatedProfile);
+        setUser(updatedProfile);
+      }
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error);
       throw error;

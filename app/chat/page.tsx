@@ -45,6 +45,8 @@ function ChatPageContent() {
   const touchStartPositionRef = useRef<{ x: number; y: number } | null>(null);
   const voiceRecorderRef = useRef<VoiceRecorderRef>(null);
   const cancelRecordingHandlerRef = useRef<() => void>(() => {});
+  const [isScrollingMessages, setIsScrollingMessages] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -573,33 +575,6 @@ function ChatPageContent() {
 
   return (
     <main className="chat-main-container">
-      <div className="chat-header-fixed chat-header-messenger">
-        <a href="/canaldiscussion" className="leave-btn" title="Retour" aria-label="Retour">
-          ‹
-        </a>
-        <div className="chat-header-center">
-          <div className="chat-header-title-container">
-            <h1 className="chat-header-title">{chatTitle}</h1>
-            {chatSubtitle && <p className="chat-header-subtitle">{chatSubtitle}</p>}
-          </div>
-        </div>
-        <div className="chat-header-right">
-          <div
-            className="chat-header-status-right"
-            title={
-              connectionStatus === 'online' ? 'Connecté' :
-              connectionStatus === 'connecting' ? 'Connexion...' :
-              'Hors ligne'
-            }
-          >
-            <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} />
-          </div>
-          <div className="chat-header-avatar" title={username}>
-            {username.charAt(0).toUpperCase()}
-          </div>
-        </div>
-      </div>
-
       {showGroupSettingsModal && isPrivateRoom && isCreator && (
         <div
           className="withdraw-modal-overlay"
@@ -683,6 +658,38 @@ function ChatPageContent() {
 
       <div className="chat-container">
         <div className="chat-content">
+          <div className="chat-header-fixed">
+            <div className="chat-header-container chat-header-messenger">
+              <a href="/canaldiscussion" className="leave-btn" title="Retour" aria-label="Retour">
+                ‹
+              </a>
+              <div className="chat-header-center">
+                <div className="chat-header-title-container">
+                  <h1 className="chat-header-title">{chatTitle}</h1>
+                  {chatSubtitle && <p className="chat-header-subtitle">{chatSubtitle}</p>}
+                </div>
+              </div>
+              <div className="chat-header-right">
+                <div
+                  className="chat-header-status-right"
+                  title={
+                    connectionStatus === 'online' ? 'Connecté' :
+                    connectionStatus === 'connecting' ? 'Connexion...' :
+                    'Hors ligne'
+                  }
+                >
+                  <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} />
+                </div>
+                <div className="chat-header-avatar" title={username}>
+                  {userProfile?.avatar ? (
+                    <img key={userProfile.avatar} src={userProfile.avatar} alt="" className="chat-header-avatar-img" referrerPolicy="no-referrer" />
+                  ) : (
+                    username.charAt(0).toUpperCase()
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
           {/* Message épinglé (placeholder - pas de donnée backend pour l'instant) */}
           <div className="pinned-message-bar" style={{ display: 'none' }}>
             <span className="pinned-label">Message épinglé</span>
@@ -715,7 +722,18 @@ function ChatPageContent() {
               </button>
             </div>
           )}
-          <div className="messages" id="messages">
+          <div
+            className={`messages ${isScrollingMessages ? 'is-scrolling' : ''}`}
+            id="messages"
+            onScroll={() => {
+              setIsScrollingMessages(true);
+              if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+              scrollTimeoutRef.current = setTimeout(() => {
+                setIsScrollingMessages(false);
+                scrollTimeoutRef.current = null;
+              }, 800);
+            }}
+          >
             {connectionStatus === 'connecting' ? (
               <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(255, 255, 255, 0.6)' }}>
                 <div style={{ 
@@ -929,24 +947,17 @@ function ChatPageContent() {
                                 </div>
                               )}
                               
-                              {/* Texte du message */}
-                              {message.text && (
-                                <div dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br>') }} />
-                              )}
-                              
-                              {/* Heure et statut modifié */}
-                              <div className="message-time-container" style={{ 
-                                alignItems: 'center', 
-                                justifyContent: 'flex-end',
-                                gap: '6px',
-                                marginTop: '4px',
-                                fontSize: '0.7rem',
-                                opacity: 0.7
-                              }}>
-                                {message.edited && (
-                                  <span className="message-edited">(modifié)</span>
-                                )}
-                                <span className="message-time">{formatTime(message.timestamp)}</span>
+                              {/* Texte du message + heure à droite */}
+                              <div className="message-text-row">
+                                <div className="message-text-content">
+                                  {message.text && (
+                                    <span dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br>') }} />
+                                  )}
+                                </div>
+                                <span className="message-time-inline">
+                                  {message.edited && <span className="message-edited">(modifié) </span>}
+                                  {formatTime(message.timestamp)}
+                                </span>
                               </div>
                               
                               {/* Boutons de réaction - à l'intérieur de la bulle avec compteurs */}

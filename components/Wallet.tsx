@@ -1,10 +1,11 @@
 'use client';
 
+import { useRef } from 'react';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { IconWallet, IconRefresh, IconWithdraw, IconCheck } from '@/components/Icons';
+import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus } from '@/components/Icons';
 import './Wallet.css';
 
 interface WalletProps {
@@ -33,9 +34,12 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   }
 
   const { wallet, balance, loading, error, refreshBalance } = useWallet(userId);
-  const { logout } = useAuth();
+  const { userProfile, updateUserProfile, logout } = useAuth();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawSent, setWithdrawSent] = useState(false);
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
@@ -46,6 +50,11 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
     phoneOrIban: '',
     fullName: '',
   });
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [helpSent, setHelpSent] = useState(false);
+  const [helpSubmitting, setHelpSubmitting] = useState(false);
+  const [helpError, setHelpError] = useState<string | null>(null);
+  const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
 
@@ -88,7 +97,73 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
         
         {isExpanded && wallet && (
           <div className="wallet-details">
-          {username && <p className="wallet-details-username">{username.toUpperCase()}</p>}
+          {username && (
+            <p className="wallet-details-username">
+              <span className="wallet-avatar-wrap">
+                {userProfile?.avatar ? (
+                  <img
+                    key={userProfile.avatar}
+                    src={userProfile.avatar}
+                    alt=""
+                    className="wallet-avatar-details wallet-avatar-img"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="wallet-avatar-details">{username.charAt(0).toUpperCase()}</span>
+                )}
+                <label className="wallet-avatar-plus-wrap" title="Changer la photo de profil">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    className="wallet-avatar-input"
+                    disabled={avatarUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !userId) return;
+                      setAvatarError(null);
+                      setAvatarUploading(true);
+                      const timeoutMs = 20000;
+                      const timeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => reject(new Error('Délai dépassé. Vérifiez votre connexion.')), timeoutMs);
+                      });
+                      try {
+                        const formData = new FormData();
+                        formData.append('avatar', file);
+                        const res = await Promise.race([
+                          fetch('/api/profile/avatar', { method: 'POST', body: formData }),
+                          timeoutPromise,
+                        ]);
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setAvatarError(data.error || 'Erreur lors de l\'upload.');
+                          return;
+                        }
+                        if (data.avatar) {
+                          await updateUserProfile({ avatar: data.avatar });
+                        } else if (data.user?.avatar) {
+                          await updateUserProfile({ avatar: data.user.avatar });
+                        }
+                      } catch (err: any) {
+                        setAvatarError(err?.message || 'Erreur lors de l\'upload.');
+                      } finally {
+                        setAvatarUploading(false);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <span className="wallet-avatar-plus" aria-hidden="true"><IconPlus size={10} /></span>
+                </label>
+                {avatarUploading && (
+                  <span className="wallet-avatar-loading" aria-hidden="true">
+                    <span className="wallet-avatar-spinner" />
+                  </span>
+                )}
+              </span>
+              {username.toUpperCase()}
+            </p>
+          )}
+          {avatarError && <p className="wallet-avatar-error">{avatarError}</p>}
           <button 
             className="wallet-refresh-btn"
             onClick={(e) => {
@@ -108,6 +183,19 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
             }}
           >
             <IconWithdraw size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Retirer mon argent
+          </button>
+          <button
+            type="button"
+            className="wallet-help-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setHelpError(null);
+              setHelpSent(false);
+              setHelpForm({ subject: '', message: '' });
+              setShowHelpModal(true);
+            }}
+          >
+            Aide
           </button>
           <button 
             type="button"
@@ -281,6 +369,116 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                   </button>
                   <button type="submit" className="withdraw-form-submit" disabled={withdrawSubmitting}>
                     {withdrawSubmitting ? 'Envoi en cours…' : 'Envoyer la demande'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showHelpModal && (
+        <div
+          className="withdraw-modal-overlay"
+          onClick={() => !helpSubmitting && setShowHelpModal(false)}
+        >
+          <div className="withdraw-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="withdraw-modal-header">
+              <div className="withdraw-modal-header-inner">
+                <span className="withdraw-modal-icon help-modal-icon" aria-hidden="true">?</span>
+                <h3 className="withdraw-modal-title">Aide</h3>
+              </div>
+              <button
+                type="button"
+                className="withdraw-modal-close"
+                onClick={() => !helpSubmitting && setShowHelpModal(false)}
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+            {helpSent ? (
+              <div className="withdraw-success">
+                <div className="withdraw-success-icon"><IconCheck size={28} /></div>
+                <h4 className="withdraw-success-title">Message envoyé</h4>
+                <p className="withdraw-success-text">Nous avons bien reçu votre demande. Notre équipe vous répondra dans les plus brefs délais.</p>
+                <button
+                  type="button"
+                  className="withdraw-success-btn"
+                  onClick={() => { setShowHelpModal(false); setHelpSent(false); }}
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <form
+                className="withdraw-form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setHelpError(null);
+                  if (!helpForm.subject.trim()) {
+                    setHelpError('Veuillez choisir un sujet.');
+                    return;
+                  }
+                  if (!helpForm.message.trim()) {
+                    setHelpError('Veuillez décrire votre demande.');
+                    return;
+                  }
+                  setHelpSubmitting(true);
+                  try {
+                    const res = await fetch('/api/help', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId,
+                        username: username || '',
+                        userEmail: userEmail || '',
+                        subject: helpForm.subject.trim(),
+                        message: helpForm.message.trim(),
+                      }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      setHelpError(data.error || 'Erreur lors de l\'envoi.');
+                      return;
+                    }
+                    setHelpSent(true);
+                  } catch {
+                    setHelpError('Erreur de connexion. Réessayez.');
+                  } finally {
+                    setHelpSubmitting(false);
+                  }
+                }}
+              >
+                <label className="withdraw-form-label">
+                  Sujet
+                  <select
+                    value={helpForm.subject}
+                    onChange={(e) => setHelpForm((f) => ({ ...f, subject: e.target.value }))}
+                  >
+                    <option value="">Choisir un sujet</option>
+                    <option value="portefeuille">Question sur le portefeuille</option>
+                    <option value="retrait">Problème de retrait</option>
+                    <option value="technique">Problème technique</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </label>
+                <label className="withdraw-form-label">
+                  Votre message
+                  <textarea
+                    rows={4}
+                    placeholder="Décrivez votre question ou problème..."
+                    value={helpForm.message}
+                    onChange={(e) => setHelpForm((f) => ({ ...f, message: e.target.value }))}
+                  />
+                </label>
+                {helpError && <div className="withdraw-form-error">{helpError}</div>}
+                <div className="withdraw-form-actions">
+                  <button type="button" className="withdraw-form-cancel" onClick={() => setShowHelpModal(false)} disabled={helpSubmitting}>
+                    Annuler
+                  </button>
+                  <button type="submit" className="withdraw-form-submit" disabled={helpSubmitting}>
+                    {helpSubmitting ? 'Envoi en cours…' : 'Envoyer'}
                   </button>
                 </div>
               </form>

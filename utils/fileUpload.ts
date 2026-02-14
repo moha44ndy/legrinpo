@@ -14,6 +14,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB pour les images
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB pour les vidéos
 const MAX_AUDIO_SIZE = 5 * 1024 * 1024; // 5 MB pour les notes vocales (environ 1 minute)
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB pour la photo de profil
 
 // Types de fichiers autorisés
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -118,6 +119,44 @@ export async function uploadAudio(
   } catch (error: any) {
     console.error('Erreur lors de l\'upload de la note vocale:', error);
     throw new Error(`Erreur lors de l'upload de la note vocale : ${error.message}`);
+  }
+}
+
+/**
+ * Upload une photo de profil vers Firebase Storage
+ * Chemin : profiles/{userId}/avatar_{timestamp}.{ext}
+ */
+export async function uploadAvatar(file: File, userId: string): Promise<FileMetadata> {
+  if (!storage) {
+    throw new Error('Firebase Storage n\'est pas initialisé');
+  }
+
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error('Format non autorisé. Utilisez JPG, PNG, GIF ou WebP.');
+  }
+
+  if (file.size > MAX_AVATAR_SIZE) {
+    throw new Error('La photo ne doit pas dépasser 2 Mo.');
+  }
+
+  const timestamp = Date.now();
+  const ext = file.name.split('.').pop() || 'jpg';
+  const fileName = `avatar_${timestamp}.${ext}`;
+  const storagePath = `profiles/${userId}/${fileName}`;
+  const storageRef = ref(storage, storagePath);
+
+  try {
+    const snapshot: UploadResult = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return {
+      url: downloadURL,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    };
+  } catch (error: any) {
+    console.error('Erreur lors de l\'upload de la photo de profil:', error);
+    throw new Error(`Erreur lors de l'upload : ${error.message}`);
   }
 }
 

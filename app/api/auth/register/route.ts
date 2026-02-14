@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Retourner les informations de l'utilisateur (sans le mot de passe)
     const user = await query(
-      'SELECT id, uid, email, username, display_name, created_at FROM users WHERE id = ?',
+      'SELECT id, uid, email, username, display_name, avatar, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
         email: userData.email,
         username: userData.username,
         displayName: userData.display_name,
+        avatar: userData.avatar || undefined,
       },
     });
   } catch (error: any) {

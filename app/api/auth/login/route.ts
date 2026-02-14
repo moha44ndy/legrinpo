@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Trouver l'utilisateur par email
     const users = await query(
-      'SELECT id, uid, email, username, display_name, password_hash FROM users WHERE email = ?',
+      'SELECT id, uid, email, username, display_name, avatar, password_hash FROM users WHERE email = ?',
       [email]
     );
 
@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         username: user.username,
         displayName: user.display_name,
+        avatar: user.avatar || undefined,
       },
     });
   } catch (error: any) {

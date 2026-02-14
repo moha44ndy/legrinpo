@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
       // Récupérer l'utilisateur
       const users = await query(
-        'SELECT id, uid, email, username, display_name, created_at FROM users WHERE id = ?',
+        'SELECT id, uid, email, username, display_name, avatar, created_at, updated_at FROM users WHERE id = ?',
         [userId]
       );
 
@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
           email: user.email,
           username: user.username,
           displayName: user.display_name,
+          avatar: user.avatar || undefined,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at,
         },
       });
     } catch (error) {
