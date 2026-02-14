@@ -85,6 +85,7 @@ function ChatPageContent() {
     roomPassword,
     username,
     userId: userId || '', // Passer une chaîne vide si userId est null
+    userAvatar: userProfile?.avatar ?? undefined,
     isPrivateRoom,
   });
   
@@ -788,9 +789,18 @@ function ChatPageContent() {
                     >
                       <div className={`message-header ${showHeader ? '' : 'message-header-hidden'}`}>
                         <div className="user-avatar">
-                          <div className="avatar-initial">
-                            {message.username.charAt(0).toUpperCase()}
-                          </div>
+                          {(message.avatar || (isOwn && userProfile?.avatar)) ? (
+                            <img
+                              src={message.avatar || userProfile?.avatar || ''}
+                              alt=""
+                              className="avatar-img"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="avatar-initial">
+                              {message.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div className="message-details">
                           <div className="username-display">

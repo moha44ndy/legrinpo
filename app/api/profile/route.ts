@@ -34,8 +34,19 @@ export async function PATCH(request: NextRequest) {
       values.push(displayName.trim() || null);
     }
     if (typeof username === 'string' && username.trim().length >= 3) {
+      const newUsername = username.trim();
+      const existing = await query(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [newUsername, userId]
+      );
+      if (Array.isArray(existing) && existing.length > 0) {
+        return NextResponse.json(
+          { error: 'Ce nom d\'utilisateur est déjà pris.' },
+          { status: 400 }
+        );
+      }
       updates.push('username = ?');
-      values.push(username.trim());
+      values.push(newUsername);
     }
 
     if (updates.length === 0) {

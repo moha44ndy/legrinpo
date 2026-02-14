@@ -14,7 +14,7 @@ const METHOD_LABELS: Record<string, string> = {
   orange_money: 'Orange Money',
   moov_money: 'Moov Money',
   mtn_money: 'MTN Money',
-  carte_bancaire: 'Carte bancaire',
+  carte_bancaire: 'Compte bancaire',
 };
 
 function getMethodLabel(method: string): string {
@@ -24,11 +24,11 @@ function getMethodLabel(method: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, username, userEmail, amount, method, phoneOrIban, fullName } = body;
+    const { userId, username, userEmail, amount, method, country, phoneOrIban, fullName } = body;
 
-    if (!userId || amount == null || !method || !phoneOrIban?.trim() || !fullName?.trim() || !userEmail?.trim()) {
+    if (!userId || amount == null || !method || !country?.trim() || !phoneOrIban?.trim() || !fullName?.trim() || !userEmail?.trim()) {
       return NextResponse.json(
-        { error: 'Champs requis: userId, amount, method, phoneOrIban, fullName, userEmail' },
+        { error: 'Champs requis: userId, amount, method, country, phoneOrIban, fullName, userEmail' },
         { status: 400 }
       );
     }
@@ -47,12 +47,16 @@ export async function POST(request: NextRequest) {
     const methodLabel = getMethodLabel(method);
     const fieldLabel = method === 'carte_bancaire' ? 'IBAN / Compte' : 'Téléphone';
 
+    const countryVal = (country || '').trim();
+    const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     const text = [
       'Nouvelle demande de retrait',
       '---',
       `Utilisateur: ${username || userId}`,
       `ID: ${userId}`,
       `Email: ${userEmail}`,
+      `Pays: ${countryVal}`,
       `Montant: ${amountNum} FCFA`,
       `Mode: ${methodLabel}`,
       `${fieldLabel}: ${phoneOrIban}`,
@@ -64,13 +68,14 @@ export async function POST(request: NextRequest) {
     const html = `
       <h2>Nouvelle demande de retrait</h2>
       <table style="border-collapse: collapse;">
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Utilisateur</strong></td><td style="padding:6px;border:1px solid #ddd;">${username || userId}</td></tr>
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>ID</strong></td><td style="padding:6px;border:1px solid #ddd;">${userId}</td></tr>
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Email</strong></td><td style="padding:6px;border:1px solid #ddd;">${userEmail}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Utilisateur</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(username || userId)}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>ID</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(userId)}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Email</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(userEmail)}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Pays</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(countryVal)}</td></tr>
         <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Montant</strong></td><td style="padding:6px;border:1px solid #ddd;">${amountNum} FCFA</td></tr>
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Mode</strong></td><td style="padding:6px;border:1px solid #ddd;">${methodLabel}</td></tr>
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>${fieldLabel}</strong></td><td style="padding:6px;border:1px solid #ddd;">${phoneOrIban}</td></tr>
-        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Nom complet</strong></td><td style="padding:6px;border:1px solid #ddd;">${fullName}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Mode</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(methodLabel)}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>${escapeHtml(fieldLabel)}</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(phoneOrIban)}</td></tr>
+        <tr><td style="padding:6px;border:1px solid #ddd;"><strong>Nom complet</strong></td><td style="padding:6px;border:1px solid #ddd;">${escapeHtml(fullName)}</td></tr>
       </table>
       <p><em>Après validation sous 24 h, effectuer le virement et confirmer à l'utilisateur.</em></p>
     `;

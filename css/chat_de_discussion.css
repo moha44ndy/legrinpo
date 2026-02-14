@@ -283,6 +283,8 @@
             margin-bottom: 16px;
             animation: slideIn 0.3s ease-out;
             padding: 4px 0;
+            max-width: 100%;
+            min-width: 0;
         }
 
         .message.consecutive {
@@ -314,6 +316,14 @@
             justify-content: center;
             flex-shrink: 0;
             box-shadow: 0 2px 8px rgba(74, 158, 255, 0.3);
+            overflow: hidden;
+        }
+
+        .user-avatar .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         .avatar-initial {
@@ -341,6 +351,15 @@
         .message-text-content {
             flex: 1;
             min-width: 0;
+            max-width: 100%;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .message-text-content span {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .message-time-inline {
@@ -430,6 +449,8 @@
             flex-direction: column;
             align-items: flex-start;
             order: 2;
+            max-width: 100%;
+            min-width: 0;
         }
 
         @keyframes slideIn {
@@ -462,12 +483,14 @@
             position: relative;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            word-break: break-word;
             font-size: 0.95rem;
             font-weight: 400;
             line-height: 1.5;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             transition: transform 0.2s, box-shadow 0.2s;
             min-width: 0;
+            overflow: hidden;
         }
 
         .message-bubble:hover {

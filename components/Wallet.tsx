@@ -5,7 +5,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus } from '@/components/Icons';
+import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus, IconEdit } from '@/components/Icons';
 import './Wallet.css';
 
 interface WalletProps {
@@ -21,7 +21,24 @@ const WITHDRAW_METHODS: { value: WithdrawMethod; label: string }[] = [
   { value: 'orange_money', label: 'Orange Money' },
   { value: 'moov_money', label: 'Moov Money' },
   { value: 'mtn_money', label: 'MTN Money' },
-  { value: 'carte_bancaire', label: 'Carte bancaire' },
+  { value: 'carte_bancaire', label: 'Compte bancaire' },
+];
+
+const WITHDRAW_COUNTRIES = [
+  'Côte d\'Ivoire',
+  'Sénégal',
+  'Bénin',
+  'Burkina Faso',
+  'Mali',
+  'Niger',
+  'Togo',
+  'Guinée-Bissau',
+  'Cameroun',
+  'Gabon',
+  'Congo-Brazzaville',
+  'Tchad',
+  'Centrafrique',
+  'Guinée équatoriale',
 ];
 
 const MIN_WITHDRAWAL = 5000;
@@ -47,6 +64,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
     method: 'wave' as WithdrawMethod,
+    country: '',
     phoneOrIban: '',
     fullName: '',
   });
@@ -57,6 +75,10 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [editUsernameValue, setEditUsernameValue] = useState('');
+  const [usernameEditError, setUsernameEditError] = useState<string | null>(null);
+  const [usernameEditSaving, setUsernameEditSaving] = useState(false);
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
 
@@ -99,7 +121,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
         
         {isExpanded && wallet && (
           <div className="wallet-details">
-          {username && (
+          {(username || userProfile?.username) && (
             <p className="wallet-details-username">
               <span className="wallet-avatar-wrap">
                 {userProfile?.avatar ? (
@@ -118,7 +140,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                     />
                   </button>
                 ) : (
-                  <span className="wallet-avatar-details">{username.charAt(0).toUpperCase()}</span>
+                  <span className="wallet-avatar-details">{(userProfile?.username || username || '').charAt(0).toUpperCase()}</span>
                 )}
                 <label className="wallet-avatar-plus-wrap" title="Changer la photo de profil">
                   <input
@@ -127,6 +149,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     className="wallet-avatar-input"
                     disabled={avatarUploading}
+                    aria-label="Changer la photo de profil"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file || !userId) return;
@@ -169,9 +192,84 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                   </span>
                 )}
               </span>
-              {username.toUpperCase()}
+              {editingUsername ? (
+                <span className="wallet-username-edit-wrap">
+                  <input
+                    type="text"
+                    className="wallet-username-edit-input"
+                    value={editUsernameValue}
+                    onChange={(e) => {
+                      setEditUsernameValue(e.target.value);
+                      setUsernameEditError(null);
+                    }}
+                    placeholder="Nouveau pseudo (min. 3 caractères)"
+                    disabled={usernameEditSaving}
+                    autoFocus
+                    maxLength={50}
+                    aria-label="Nouveau nom d’utilisateur"
+                  />
+                  <button
+                    type="button"
+                    className="wallet-username-edit-btn wallet-username-edit-save"
+                    onClick={async () => {
+                      const val = editUsernameValue.trim();
+                      if (val.length < 3) {
+                        setUsernameEditError('Au moins 3 caractères.');
+                        return;
+                      }
+                      setUsernameEditError(null);
+                      setUsernameEditSaving(true);
+                      try {
+                        await updateUserProfile({ username: val });
+                        setEditingUsername(false);
+                        setEditUsernameValue('');
+                      } catch (err: any) {
+                        setUsernameEditError(err?.message || 'Erreur.');
+                      } finally {
+                        setUsernameEditSaving(false);
+                      }
+                    }}
+                    disabled={usernameEditSaving}
+                  >
+                    OK
+                  </button>
+                  <button
+                    type="button"
+                    className="wallet-username-edit-btn wallet-username-edit-cancel"
+                    onClick={() => {
+                      setEditingUsername(false);
+                      setEditUsernameValue('');
+                      setUsernameEditError(null);
+                    }}
+                    disabled={usernameEditSaving}
+                  >
+                    Annuler
+                  </button>
+                </span>
+              ) : (
+                <>
+                  <span className="wallet-details-username-text">
+                    {(userProfile?.username || username || '').toUpperCase()}
+                  </span>
+                  <button
+                    type="button"
+                    className="wallet-username-edit-pencil"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditUsernameValue(userProfile?.username || username || '');
+                      setUsernameEditError(null);
+                      setEditingUsername(true);
+                    }}
+                    title="Modifier le pseudo"
+                    aria-label="Modifier le pseudo"
+                  >
+                    <IconEdit size={14} />
+                  </button>
+                </>
+              )}
             </p>
           )}
+          {usernameEditError && <p className="wallet-avatar-error">{usernameEditError}</p>}
           {avatarError && <p className="wallet-avatar-error">{avatarError}</p>}
           <button 
             className={`wallet-refresh-btn${isRefreshing ? ' wallet-refreshing' : ''}`}
@@ -317,6 +415,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                         userEmail: userEmail.trim(),
                         amount,
                         method: withdrawForm.method,
+                        country: withdrawForm.country.trim(),
                         phoneOrIban: withdrawForm.phoneOrIban.trim(),
                         fullName: withdrawForm.fullName.trim(),
                       }),
@@ -357,6 +456,19 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                   >
                     {WITHDRAW_METHODS.map((m) => (
                       <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="withdraw-form-label">
+                  Pays
+                  <select
+                    value={withdrawForm.country}
+                    onChange={(e) => setWithdrawForm((f) => ({ ...f, country: e.target.value }))}
+                    aria-label="Choisir votre pays"
+                  >
+                    <option value="">Choisir un pays</option>
+                    {WITHDRAW_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </label>

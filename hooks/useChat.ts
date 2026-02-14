@@ -49,6 +49,7 @@ export interface ChatMessage {
   timestamp: Date;
   edited?: boolean;
   isArtist?: boolean;
+  avatar?: string; // URL de la photo de profil de l'expéditeur
   reactions?: { [userId: string]: string }; // userId -> emoji
   reactionCount?: number;
   attachments?: FileAttachment[]; // Images, vidéos, fichiers
@@ -60,6 +61,7 @@ interface UseChatOptions {
   roomPassword?: string;
   username: string;
   userId: string;
+  userAvatar?: string; // Photo de profil pour les nouveaux messages
   isPrivateRoom: boolean;
 }
 
@@ -68,6 +70,7 @@ export function useChat({
   roomPassword,
   username,
   userId,
+  userAvatar,
   isPrivateRoom,
 }: UseChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -263,6 +266,9 @@ export function useChat({
           reactions: {},
           reactionCount: 0,
         };
+        if (userAvatar) {
+          messageData.avatar = userAvatar;
+        }
 
         if (attachments && attachments.length > 0) {
           messageData.attachments = attachments;
@@ -286,7 +292,7 @@ export function useChat({
         console.error('Erreur lors de l\'envoi du message:', error);
       }
     },
-    [roomId, username, userId, isConnected, scrollToBottom]
+    [roomId, username, userId, userAvatar, isConnected, scrollToBottom]
   );
 
   const editMessage = useCallback(
