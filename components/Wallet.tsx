@@ -56,6 +56,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [helpError, setHelpError] = useState<string | null>(null);
   const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
 
@@ -173,11 +174,18 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           )}
           {avatarError && <p className="wallet-avatar-error">{avatarError}</p>}
           <button 
-            className="wallet-refresh-btn"
-            onClick={(e) => {
+            className={`wallet-refresh-btn${isRefreshing ? ' wallet-refreshing' : ''}`}
+            onClick={async (e) => {
               e.stopPropagation();
-              refreshBalance();
+              if (isRefreshing) return;
+              setIsRefreshing(true);
+              try {
+                await refreshBalance();
+              } finally {
+                setIsRefreshing(false);
+              }
             }}
+            disabled={isRefreshing}
           >
             <IconRefresh size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Actualiser
           </button>

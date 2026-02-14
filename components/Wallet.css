@@ -305,6 +305,23 @@
   border-color: rgba(74, 158, 255, 0.5);
 }
 
+.wallet-refresh-btn.wallet-refreshing {
+  cursor: wait;
+}
+
+.wallet-refresh-btn.wallet-refreshing svg {
+  animation: wallet-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes wallet-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .wallet-withdraw-btn {
   width: 100%;
   margin-top: 8px;
