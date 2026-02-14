@@ -47,7 +47,8 @@ function ChatPageContent() {
   const cancelRecordingHandlerRef = useRef<() => void>(() => {});
   const [isScrollingMessages, setIsScrollingMessages] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
+
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
   
@@ -96,6 +97,30 @@ function ChatPageContent() {
       router.push('/canaldiscussion');
     }
   }, [roomId, router]);
+
+  // Récupérer les photos de profil des expéditeurs pour afficher les avatars à côté des messages
+  useEffect(() => {
+    if (!messages.length) {
+      setUserAvatarsMap({});
+      return;
+    }
+    const userIds = [...new Set(messages.map((m) => m.userId).filter(Boolean))];
+    if (userIds.length === 0) return;
+    let cancelled = false;
+    fetch('/api/users/avatars', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.avatars) setUserAvatarsMap(data.avatars);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [messages]);
 
   // Fermer le menu contextuel si on clique ailleurs
   useEffect(() => {
@@ -476,38 +501,29 @@ function ChatPageContent() {
 
 
 
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
-  const shouldShowDateSeparator = (currentMessage: any, previousMessage: any) => {
-    if (!previousMessage) return true;
-    const currentDate = new Date(currentMessage.timestamp).toDateString();
-    const previousDate = new Date(previousMessage.timestamp).toDateString();
-    return currentDate !== previousDate;
+  const formatRelativeTime = (date: Date | number) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffH = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffH / 24);
+    if (diffSec < 60) return 'À l\'instant';
+    if (diffMin < 60) return diffMin <= 1 ? 'il y a 1 min' : `il y a ${diffMin} min`;
+    if (diffH < 24) return diffH <= 1 ? 'il y a 1 h' : `il y a ${diffH} h`;
+    if (diffDays === 1) return 'hier';
+    if (diffDays < 7) return `il y a ${diffDays} jours`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks <= 1 ? 'il y a 1 semaine' : `il y a ${weeks} semaines`;
+    }
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
   const shouldShowMessageHeader = (currentMessage: any, nextMessage: any) => {
-    // Toujours afficher le header si c'est le dernier message
     if (!nextMessage) return true;
-    // Afficher le header si le message suivant est d'un autre utilisateur
     if (currentMessage.userId !== nextMessage.userId) return true;
-    // Afficher le header si le message suivant a une date différente (séparateur de date)
-    const currentDate = new Date(currentMessage.timestamp).toDateString();
-    const nextDate = new Date(nextMessage.timestamp).toDateString();
-    if (currentDate !== nextDate) return true;
-    // Sinon, ne pas afficher le header
     return false;
   };
 
@@ -763,22 +779,12 @@ function ChatPageContent() {
             ) : (
               messages.map((message, index) => {
                 const isOwn = message.userId === userId;
-                const showDate = shouldShowDateSeparator(message, messages[index - 1]);
                 const nextMessage = messages[index + 1];
                 const showHeader = shouldShowMessageHeader(message, nextMessage);
-                const previousMessage = messages[index - 1];
-                // Réduire l'espace si le message suivant est de la même personne (même pour le premier message de la série)
-                const isConsecutive = nextMessage && nextMessage.userId === message.userId && !shouldShowDateSeparator(nextMessage, message);
+                const isConsecutive = nextMessage && nextMessage.userId === message.userId;
 
                 return (
                   <div key={message.id}>
-                    {showDate && (
-                      <div className="date-separator">
-                        <div className="date-separator-line" />
-                        <div className="date-separator-text">{formatDate(message.timestamp)}</div>
-                        <div className="date-separator-line" />
-                      </div>
-                    )}
                     <div 
                       className={`message ${isOwn ? 'own' : ''} ${message.isArtist ? 'artist' : ''} ${clickedMessageId === message.id ? 'clicked' : ''} ${isConsecutive ? 'consecutive' : ''}`}
                       onContextMenu={(e) => handleContextMenu(message.id, e)}
@@ -789,9 +795,9 @@ function ChatPageContent() {
                     >
                       <div className={`message-header ${showHeader ? '' : 'message-header-hidden'}`}>
                         <div className="user-avatar">
-                          {(message.avatar || (isOwn && userProfile?.avatar)) ? (
+                          {(message.avatar || userAvatarsMap[message.userId] || (isOwn && userProfile?.avatar)) ? (
                             <img
-                              src={message.avatar || userProfile?.avatar || ''}
+                              src={message.avatar || userAvatarsMap[message.userId] || userProfile?.avatar || ''}
                               alt=""
                               className="avatar-img"
                               referrerPolicy="no-referrer"
@@ -966,7 +972,7 @@ function ChatPageContent() {
                                 </div>
                                 <span className="message-time-inline">
                                   {message.edited && <span className="message-edited">(modifié) </span>}
-                                  {formatTime(message.timestamp)}
+                                  {formatRelativeTime(message.timestamp)}
                                 </span>
                               </div>
                               
