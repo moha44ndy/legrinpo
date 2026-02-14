@@ -81,6 +81,7 @@ export function useChat({
   const [removedUserIds, setRemovedUserIds] = useState<string[]>([]);
   const [roomMembers, setRoomMembers] = useState<Record<string, { username: string }>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousMessageCountRef = useRef<number>(0);
 
   const isCreator = !!roomId && !!userId && roomCreatorId === userId;
   const isRemovedFromGroup = removedUserIds.includes(userId);
@@ -103,6 +104,7 @@ export function useChat({
     let unsubscribeRoom: (() => void) | null = null;
 
     const init = async () => {
+      previousMessageCountRef.current = 0;
       try {
         setConnectionStatus('connecting');
 
@@ -219,10 +221,14 @@ export function useChat({
             setIsConnected(true);
             setConnectionStatus('online');
             
-            // Scroll en bas après un court délai pour laisser le DOM se mettre à jour
-            setTimeout(() => {
-              scrollToBottomInstant();
-            }, 100);
+            // Ne scroller que quand un nouveau message est ajouté (pas quand seules les réactions changent)
+            const prevCount = previousMessageCountRef.current;
+            previousMessageCountRef.current = newMessages.length;
+            if (newMessages.length > prevCount) {
+              setTimeout(() => {
+                scrollToBottomInstant();
+              }, 100);
+            }
           },
           (error) => {
             console.error('Erreur lors de l\'écoute des messages:', error);

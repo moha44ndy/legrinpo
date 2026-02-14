@@ -5,7 +5,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus, IconEdit } from '@/components/Icons';
+import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus, IconEdit, IconTrash } from '@/components/Icons';
 import './Wallet.css';
 
 interface WalletProps {
@@ -56,6 +56,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarDeleting, setAvatarDeleting] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawSent, setWithdrawSent] = useState(false);
@@ -636,6 +637,39 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
             onClick={(e) => e.stopPropagation()}
             referrerPolicy="no-referrer"
           />
+          <button
+            type="button"
+            className="wallet-avatar-preview-delete"
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (avatarDeleting) return;
+              setAvatarError(null);
+              setAvatarDeleting(true);
+              try {
+                const res = await fetch('/api/profile', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ avatar: '' }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                  setAvatarError(data.error || 'Impossible de supprimer la photo.');
+                  return;
+                }
+                await updateUserProfile({ avatar: undefined });
+                setShowAvatarPreview(false);
+              } catch (err: any) {
+                setAvatarError(err?.message || 'Impossible de supprimer la photo.');
+              } finally {
+                setAvatarDeleting(false);
+              }
+            }}
+            disabled={avatarDeleting}
+            aria-label="Supprimer la photo de profil"
+            title="Supprimer la photo de profil"
+          >
+            <IconTrash size={20} />
+          </button>
         </div>
       )}
     </>

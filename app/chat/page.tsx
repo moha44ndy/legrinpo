@@ -1002,7 +1002,7 @@ function ChatPageContent() {
                                   >
                                     <button
                                       className="reaction-btn-small"
-                                      onClick={() => toggleReaction(message.id, '👍')}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(message.id, '👍'); }}
                                       title="J'aime"
                                       style={{
                                         background: hasUserReaction('👍') ? 'rgba(74, 158, 255, 0.2)' : 'transparent',
@@ -1078,7 +1078,7 @@ function ChatPageContent() {
                                     </button>
                                     <button
                                       className="reaction-btn-small"
-                                      onClick={() => toggleReaction(message.id, '🔥')}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(message.id, '🔥'); }}
                                       title="Feu"
                                       style={{
                                         background: hasUserReaction('🔥') ? 'rgba(255, 165, 0, 0.2)' : 'transparent',
@@ -1116,7 +1116,7 @@ function ChatPageContent() {
                                     </button>
                                     <button
                                       className="reaction-btn-small"
-                                      onClick={() => toggleReaction(message.id, '😡')}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleReaction(message.id, '😡'); }}
                                       title="Colère"
                                       style={{
                                         background: hasUserReaction('😡') ? 'rgba(255, 100, 100, 0.2)' : 'transparent',

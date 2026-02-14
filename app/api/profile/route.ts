@@ -25,9 +25,9 @@ export async function PATCH(request: NextRequest) {
     const updates: string[] = [];
     const values: (string | null)[] = [];
 
-    if (typeof avatar === 'string') {
+    if (avatar !== undefined) {
       updates.push('avatar = ?');
-      values.push(avatar.trim() || null);
+      values.push(avatar === null || avatar === '' ? null : (typeof avatar === 'string' ? avatar.trim() || null : null));
     }
     if (typeof displayName === 'string') {
       updates.push('display_name = ?');
