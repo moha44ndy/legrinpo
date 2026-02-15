@@ -83,6 +83,21 @@
   flex-shrink: 0;
 }
 
+.wallet-admin-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #93c5fd;
+  background: rgba(74, 158, 255, 0.25);
+  border: 1px solid rgba(74, 158, 255, 0.4);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
 .wallet-username-edit-pencil {
   display: inline-flex;
   align-items: center;
@@ -491,6 +506,28 @@
   border-color: rgba(74, 158, 255, 0.4);
 }
 
+.wallet-admin-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: rgba(74, 158, 255, 0.12);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 8px;
+  color: #93c5fd;
+  font-size: 13px;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.wallet-admin-btn:hover {
+  background: rgba(74, 158, 255, 0.2);
+  border-color: rgba(74, 158, 255, 0.5);
+  color: #bfdbfe;
+}
+
 .wallet-logout-btn {
   width: 100%;
   margin-top: 8px;
@@ -886,6 +923,7 @@
 
   .wallet-refresh-btn,
   .wallet-help-btn,
+  .wallet-admin-btn,
   .wallet-withdraw-btn,
   .wallet-logout-btn {
     padding: 10px 14px;

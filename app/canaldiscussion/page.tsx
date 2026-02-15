@@ -37,7 +37,7 @@ export default function CanalDiscussionPage() {
   // Debug: vérifier l'ID utilisateur
   useEffect(() => {
     if (user || userProfile) {
-      console.log('🔍 User data pour Wallet:', { 
+      console.log('User data pour Wallet:', { 
         user, 
         userProfile, 
         userId,

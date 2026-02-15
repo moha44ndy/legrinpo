@@ -15,9 +15,11 @@ CREATE TABLE IF NOT EXISTS users (
     display_name VARCHAR(255),
     password_hash VARCHAR(255) COMMENT 'Hash du mot de passe (si pas Firebase)',
     avatar VARCHAR(500),
+    is_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = administrateur',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
+    INDEX idx_is_admin (is_admin),
     INDEX idx_username (username),
     INDEX idx_uid (uid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

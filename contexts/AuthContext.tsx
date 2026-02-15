@@ -11,6 +11,7 @@ interface UserProfile {
   createdAt?: string;
   updatedAt?: string;
   avatar?: string;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -38,8 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.user) {
-            setUser(data.user);
-            setUserProfile(data.user);
+            const u = data.user;
+            const profile = { ...u, isAdmin: u.isAdmin === true || u.is_admin === 1 };
+            setUser(profile);
+            setUserProfile(profile);
           } else {
             setUser(null);
             setUserProfile(null);

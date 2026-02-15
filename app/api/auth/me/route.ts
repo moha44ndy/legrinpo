@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
       const decoded = Buffer.from(sessionToken, 'base64').toString('utf-8');
       const [userId] = decoded.split(':');
 
-      // Récupérer l'utilisateur
+      // Récupérer l'utilisateur (is_admin, is_disabled depuis la base)
       const users = await query(
-        'SELECT id, uid, email, username, display_name, avatar, created_at, updated_at FROM users WHERE id = ?',
+        'SELECT id, uid, email, username, display_name, avatar, COALESCE(is_admin, 0) AS is_admin, COALESCE(is_disabled, 0) AS is_disabled, created_at, updated_at FROM users WHERE id = ?',
         [userId]
       );
 
@@ -32,7 +32,14 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const user = users[0];
+      const user = users[0] as { id: number; uid: string; email: string; username: string; display_name: string; avatar: string | null; is_admin: number; is_disabled: number; created_at: string; updated_at: string };
+      if (user.is_disabled) {
+        return NextResponse.json(
+          { error: 'Compte désactivé' },
+          { status: 403 }
+        );
+      }
+      const isAdmin = !!user.is_admin;
 
       return NextResponse.json({
         success: true,
@@ -45,6 +52,7 @@ export async function GET(request: NextRequest) {
           avatar: user.avatar || undefined,
           createdAt: user.created_at,
           updatedAt: user.updated_at,
+          isAdmin,
         },
       });
     } catch (error) {

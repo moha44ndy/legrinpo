@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import Link from 'next/link';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -252,6 +253,9 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                   <span className="wallet-details-username-text">
                     {(userProfile?.username || username || '').toUpperCase()}
                   </span>
+                  {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
+                    <span className="wallet-admin-badge" title="Compte administrateur">Admin</span>
+                  )}
                   <button
                     type="button"
                     className="wallet-username-edit-pencil"
@@ -312,15 +316,26 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           >
             Aide
           </button>
+          {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
+            <Link
+              href="/admin"
+              className="wallet-admin-btn"
+              onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+            >
+              Dashboard admin
+            </Link>
+          )}
           <button 
             type="button"
             className="wallet-logout-btn"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.stopPropagation();
               if (!window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) return;
               setIsExpanded(false);
-              await logout();
-              router.push('/login');
+              // Déconnecter en différé pour améliorer l'INP (paint du panneau fermé d'abord)
+              setTimeout(() => {
+                logout().then(() => router.push('/login'));
+              }, 0);
             }}
           >
             Déconnexion
