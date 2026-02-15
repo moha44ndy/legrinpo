@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { isCurrentUserAdmin } from '@/lib/admin-auth';
+import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
+import { logAdminAction } from '@/lib/admin-logger';
 
 const DEFAULTS: Record<string, string | boolean> = {
   siteName: 'Plateforme de Discussion',
