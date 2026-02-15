@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const updates: Array<{ k: string; v: string }> = [];
     if (body.siteName !== undefined) {
-      updates.push({ k: 'siteName', v: String(body.siteName).trim() || DEFAULTS.siteName });
+      updates.push({ k: 'siteName', v: String(body.siteName).trim() || String(DEFAULTS.siteName) });
     }
     if (body.maintenanceMode !== undefined) {
       updates.push({ k: 'maintenanceMode', v: toBool(body.maintenanceMode) ? '1' : '0' });
