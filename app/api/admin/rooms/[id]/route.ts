@@ -108,7 +108,11 @@ export async function DELETE(
       if (!room?.room_id) {
         return NextResponse.json({ error: 'Salon non trouvé ou non supprimable' }, { status: 404 });
       }
-      await supabaseAdmin.from('messages').delete().eq('room_id', room.room_id).then(() => {}).catch(() => {});
+      try {
+        await supabaseAdmin.from('messages').delete().eq('room_id', room.room_id);
+      } catch {
+        // Table messages peut être absente, ignorer
+      }
       const { error } = await supabaseAdmin.from('rooms').delete().eq('id', idNum);
       if (error) throw error;
       return NextResponse.json({ success: true });
