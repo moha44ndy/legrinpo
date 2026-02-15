@@ -32,7 +32,7 @@ export default function CanalDiscussionPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user, ou générer un ID temporaire
-  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : `temp_${Date.now()}`);
+  const userId = userProfile?.uid || user?.uid || (user?.id ? `db_${user.id}` : `temp_${Date.now()}`);
   
   // Debug: vérifier l'ID utilisateur
   useEffect(() => {

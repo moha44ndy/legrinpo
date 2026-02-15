@@ -47,11 +47,11 @@ export async function GET() {
         rows = data ?? [];
       }
     } else {
-      // MySQL
+      //
       const result = await query(
         "SELECT id, room_id, name, description, type, created_at FROM rooms WHERE type = 'public' ORDER BY name"
       ).catch((err) => {
-        console.error('Erreur MySQL rooms:', err);
+        console.error('Erreur rooms:', err);
         return [];
       });
       rows = Array.isArray(result) ? result : [];

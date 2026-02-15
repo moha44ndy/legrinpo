@@ -20,8 +20,7 @@ function ChatPageContent() {
 
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user (priorité à uid pour la persistance du wallet)
-  // Si pas d'uid, utiliser mysql_id comme fallback, mais éviter les IDs temporaires
-  const userId = userProfile?.uid || user?.uid || (user?.id ? `mysql_${user.id}` : null);
+  const userId = userProfile?.uid || user?.uid || (user?.id ? `db_${user.id}` : null);
   
   // Tous les hooks doivent être déclarés avant tout return conditionnel
   const [bannerMessage, setBannerMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);

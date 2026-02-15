@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { query } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
-
-const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 const WITHDRAW_EMAIL = process.env.WITHDRAW_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const userIdNum = typeof userId === 'number' ? userId : parseInt(String(userId), 10);
 
-    if (useSupabase && supabaseAdmin) {
+    if (supabaseAdmin) {
       await supabaseAdmin.from('withdrawal_requests').insert({
         user_id: userIdNum,
         email: userEmail.trim(),
@@ -62,11 +59,6 @@ export async function POST(request: NextRequest) {
         full_name: (fullName || '').trim() || null,
         status: 'pending',
       });
-    } else {
-      await query(
-        'INSERT INTO withdrawal_requests (user_id, email, username, amount, method, country, phone_or_iban, full_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [userIdNum, userEmail.trim(), username || null, amountNum, method, (country || '').trim() || null, (phoneOrIban || '').trim() || null, (fullName || '').trim() || null, 'pending']
-      ).catch(() => {});
     }
 
     const methodLabel = getMethodLabel(method);

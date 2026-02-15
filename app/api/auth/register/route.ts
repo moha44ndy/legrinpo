@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const userId = (result as any).insertId;
 
-    // Créer le portefeuille pour l'utilisateur dans MySQL
+    // Créer le portefeuille pour l'utilisateur
     await query(
       `INSERT INTO wallets (user_id, balance, total_earned) 
        VALUES (?, 0, 0)`,

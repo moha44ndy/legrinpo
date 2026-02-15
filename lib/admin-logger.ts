@@ -1,6 +1,6 @@
 /**
  * Journal des connexions et des actions admin.
- * Utilise la table login_logs et admin_logs (MySQL ou Supabase).
+ * Utilise la table login_logs et admin_logs (Supabase).
  */
 
 import { query } from '@/lib/db';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { IconWallet } from '@/components/Icons';
@@ -98,6 +99,9 @@ export default function LoginPage() {
               required
               disabled={loading}
             />
+            <p className="auth-forgot-wrap">
+              <Link href="/forgot-password" className="auth-link auth-forgot-link">Mot de passe oublié ?</Link>
+            </p>
           </div>
 
           <button 

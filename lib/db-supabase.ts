@@ -1,11 +1,10 @@
-// Adaptateur Supabase pour remplacer MySQL
-// Cette version utilise l'API Supabase directement
+// Adaptateur Supabase – exécution des requêtes SQL via l’API Supabase
 
 import { supabaseAdmin } from './supabase';
 
 /**
  * Fonction utilitaire pour exécuter des requêtes via Supabase
- * Convertit les requêtes MySQL en appels API Supabase
+ * Convertit les requêtes SQL en appels API Supabase
  */
 export async function query(sql: string, params?: any[]): Promise<any> {
   if (!supabaseAdmin) {
@@ -137,7 +136,7 @@ async function handleInsert(sql: string, params?: any[]): Promise<any> {
     throw error;
   }
   
-  // Retourner un format compatible avec MySQL (avec insertId)
+  // Retourner un format compatible (avec insertId)
   return {
     insertId: data && data[0] ? data[0].id : null,
     ...data?.[0],

@@ -4,7 +4,7 @@ import { query } from '@/lib/db';
 /**
  * POST body: { userIds: string[] }
  * Returns: { avatars: { [userId: string]: string } }
- * userId can be "mysql_123" (MySQL id) or uid string.
+ * userId can be "db_123" (numeric user id) or uid string.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -16,28 +16,28 @@ export async function POST(request: NextRequest) {
     const uniq = [...new Set(userIds)].filter(Boolean) as string[];
     if (uniq.length === 0) return NextResponse.json({ avatars: {} });
 
-    const mysqlIds: number[] = [];
+    const dbIds: number[] = [];
     const uids: string[] = [];
     for (const id of uniq) {
       if (typeof id !== 'string') continue;
-      if (id.startsWith('mysql_')) {
-        const n = parseInt(id.replace('mysql_', ''), 10);
-        if (!isNaN(n)) mysqlIds.push(n);
+      if (id.startsWith('db_')) {
+        const n = parseInt(id.replace('db_', ''), 10);
+        if (!isNaN(n)) dbIds.push(n);
       } else {
         uids.push(id);
       }
     }
 
     const avatars: Record<string, string> = {};
-    if (mysqlIds.length > 0) {
-      const placeholders = mysqlIds.map(() => '?').join(',');
+    if (dbIds.length > 0) {
+      const placeholders = dbIds.map(() => '?').join(',');
       const rows = await query(
         `SELECT id, avatar FROM users WHERE id IN (${placeholders}) AND avatar IS NOT NULL AND avatar != ''`,
-        mysqlIds
+        dbIds
       );
       const list = Array.isArray(rows) ? rows : [];
       for (const row of list) {
-        avatars[`mysql_${row.id}`] = row.avatar;
+        avatars[`db_${row.id}`] = row.avatar;
       }
     }
     if (uids.length > 0) {

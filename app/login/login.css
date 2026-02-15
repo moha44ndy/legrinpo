@@ -83,6 +83,14 @@
     font-size: 12px;
 }
 
+.auth-forgot-wrap {
+    margin: 4px 0 0;
+    font-size: 13px;
+}
+.auth-forgot-wrap .auth-forgot-link {
+    font-weight: 500;
+}
+
 .auth-button {
     padding: 14px 24px;
     background: #4a9eff;
@@ -105,6 +113,12 @@
 .auth-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+.auth-button-block {
+    display: inline-block;
+    text-align: center;
+    margin-top: 16px;
 }
 
 .auth-error {
