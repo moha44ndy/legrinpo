@@ -298,7 +298,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
               e.stopPropagation();
               setWithdrawSent(false);
               setWithdrawError(null);
-              setShowWithdrawModal(true);
+              requestAnimationFrame(() => setShowWithdrawModal(true));
             }}
           >
             <IconWithdraw size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Retirer mon argent
@@ -311,7 +311,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
               setHelpError(null);
               setHelpSent(false);
               setHelpForm({ subject: '', message: '' });
-              setShowHelpModal(true);
+              requestAnimationFrame(() => setShowHelpModal(true));
             }}
           >
             Aide

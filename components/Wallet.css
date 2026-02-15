@@ -554,19 +554,18 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* ========== Modal retrait — style soigné ========== */
+/* ========== Modal retrait — style soigné (sans blur pour de meilleures perfs) ========== */
 .withdraw-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 14, 39, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(10, 14, 39, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   padding: 20px;
-  animation: withdraw-overlay-in 0.25s ease-out;
+  animation: withdraw-overlay-in 0.2s ease-out;
+  contain: paint;
 }
 
 @keyframes withdraw-overlay-in {
@@ -588,7 +587,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: withdraw-modal-in 0.3s ease-out;
+  animation: withdraw-modal-in 0.25s ease-out;
+  contain: layout paint;
+  will-change: transform;
 }
 
 @keyframes withdraw-modal-in {
