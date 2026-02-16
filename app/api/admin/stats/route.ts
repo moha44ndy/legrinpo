@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isCurrentUserAdmin } from '@/lib/admin-auth';
 
+export const dynamic = 'force-dynamic';
+
 function toCount(rows: any): number {
   if (!Array.isArray(rows)) return 0;
   if (rows.length === 0) return 0;

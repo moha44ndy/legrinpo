@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { isCurrentUserAdmin } from '@/lib/admin-auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     if (!(await isCurrentUserAdmin())) {

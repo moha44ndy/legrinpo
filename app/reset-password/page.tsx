@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { IconWallet } from '@/components/Icons';
@@ -8,7 +8,7 @@ import '../globals.css';
 import '../login/login.css';
 import './reset-password.css';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const tokenFromUrl = searchParams.get('token') || '';
   const [token, setToken] = useState('');
@@ -132,5 +132,22 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Réinitialisation</h1>
+            <p>Chargement...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

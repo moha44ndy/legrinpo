@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isCurrentUserAdmin } from '@/lib/admin-auth';
 
+export const dynamic = 'force-dynamic';
+
 const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 export async function GET() {
