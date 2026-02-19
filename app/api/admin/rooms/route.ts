@@ -3,24 +3,9 @@ import firebaseAdmin from 'firebase-admin';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
+import { invalidateRoomsCache, getRoomsCache, setRoomsCache, ROOMS_CACHE_TTL_MS, type MappedRoom } from '@/lib/rooms-cache';
 
 const ROOMS_COLLECTION = 'rooms';
-const ROOMS_CACHE_TTL_MS = 60 * 1000; // 1 min pour limiter les lectures Firestore
-
-let roomsCache: { rooms: MappedRoom[]; at: number } | null = null;
-
-export function invalidateRoomsCache() {
-  roomsCache = null;
-}
-
-interface MappedRoom {
-  id: string;
-  roomId: string;
-  name: string;
-  description: string;
-  type: string;
-  createdAt: string;
-}
 
 function mapRoom(docId: string, data: Record<string, unknown> & { createdAt?: { toMillis?: () => number } | string }): MappedRoom {
   const raw = data.createdAt;
@@ -52,8 +37,9 @@ export async function GET() {
     }
 
     const now = Date.now();
-    if (roomsCache && now - roomsCache.at < ROOMS_CACHE_TTL_MS) {
-      return NextResponse.json({ success: true, rooms: roomsCache.rooms });
+    const cached = getRoomsCache();
+    if (cached && now - cached.at < ROOMS_CACHE_TTL_MS) {
+      return NextResponse.json({ success: true, rooms: cached.rooms });
     }
 
     try {
@@ -64,12 +50,13 @@ export async function GET() {
       const rooms = snapshot.docs
         .map((doc) => mapRoom(doc.id, doc.data()))
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      roomsCache = { rooms, at: Date.now() };
+      setRoomsCache(rooms, Date.now());
       return NextResponse.json({ success: true, rooms });
     } catch (firestoreErr: any) {
       const isQuota = firestoreErr?.code === 8 || String(firestoreErr?.message || '').includes('Quota exceeded') || String(firestoreErr?.code === 'RESOURCE_EXHAUSTED');
-      if (isQuota && roomsCache) {
-        return NextResponse.json({ success: true, rooms: roomsCache.rooms, quotaWarning: true });
+      const cachedFallback = getRoomsCache();
+      if (isQuota && cachedFallback) {
+        return NextResponse.json({ success: true, rooms: cachedFallback.rooms, quotaWarning: true });
       }
       if (isQuota) {
         console.error('Erreur admin rooms GET (quota Firestore):', firestoreErr?.message);
