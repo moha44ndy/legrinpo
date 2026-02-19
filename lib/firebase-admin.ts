@@ -17,22 +17,32 @@ let adminDb: ReturnType<typeof admin.firestore> | null = null;
 function getAdminFirestore(): ReturnType<typeof admin.firestore> | null {
   if (adminDb) return adminDb;
 
-  const jsonPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const jsonPathRaw = (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '').trim();
+  const jsonPath = jsonPathRaw.replace(/^["']|["']$/g, '');
   if (jsonPath) {
-    const resolved = path.isAbsolute(jsonPath) ? jsonPath : path.join(process.cwd(), jsonPath);
-    if (fs.existsSync(resolved)) {
-      try {
-        if (!admin.apps.length) {
-          const keyFile = JSON.parse(fs.readFileSync(resolved, 'utf8'));
-          admin.initializeApp({ credential: admin.credential.cert(keyFile) });
+    const candidates: string[] = path.isAbsolute(jsonPath)
+      ? [path.normalize(jsonPath)]
+      : [
+          path.join(process.cwd(), jsonPath),
+          path.join(process.cwd(), path.basename(jsonPath)),
+          path.normalize(jsonPath),
+        ];
+    for (const resolved of candidates) {
+      if (fs.existsSync(resolved)) {
+        try {
+          if (!admin.apps.length) {
+            const keyFile = JSON.parse(fs.readFileSync(resolved, 'utf8'));
+            admin.initializeApp({ credential: admin.credential.cert(keyFile) });
+          }
+          adminDb = admin.firestore();
+          return adminDb;
+        } catch (e) {
+          console.error('Firebase Admin init (fichier):', e);
+          return null;
         }
-        adminDb = admin.firestore();
-        return adminDb;
-      } catch (e) {
-        console.error('Firebase Admin init (fichier):', e);
-        return null;
       }
     }
+    console.warn('Firebase Admin: fichier introuvable. Chemins testés:', candidates);
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;

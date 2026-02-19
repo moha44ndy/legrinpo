@@ -415,6 +415,12 @@
   align-items: center;
 }
 
+.admin-confirm-label {
+  font-size: 0.9rem;
+  color: #c5d8f5;
+  margin-right: 0.25rem;
+}
+
 /* ---------- Empty states ---------- */
 .admin-empty {
   color: #8b9dc3;

@@ -49,22 +49,41 @@ async function getFirebaseRoomsCount(): Promise<number> {
   }
 }
 
+async function getFirebaseWalletsStats(): Promise<{ count: number; totalBalance: number }> {
+  const db = getAdminFirestore();
+  if (!db) return { count: 0, totalBalance: 0 };
+  try {
+    const snapshot = await db.collection('wallets').get();
+    let totalBalance = 0;
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      totalBalance += Number(data.balance) || 0;
+    });
+    return { count: snapshot.size, totalBalance };
+  } catch {
+    return { count: 0, totalBalance: 0 };
+  }
+}
+
 export async function GET() {
   try {
     if (!(await isCurrentUserAdmin())) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const [users, wallets, transactions, roomsSql, totalBalance, roomsFirebase] = await Promise.all([
+    const [users, transactions, roomsSql, roomsFirebase, firebaseWallets] = await Promise.all([
       safeQueryCount('users'),
-      safeQueryCount('wallets'),
       safeQueryCount('transactions'),
       safeQueryCount('rooms').catch(() => 0),
-      safeQuerySum('wallets', 'balance'),
       getFirebaseRoomsCount(),
+      getFirebaseWalletsStats(),
     ]);
 
     const rooms = roomsFirebase > 0 ? roomsFirebase : roomsSql;
+    const wallets = firebaseWallets.count > 0 ? firebaseWallets.count : (await safeQueryCount('wallets'));
+    const totalBalance = firebaseWallets.totalBalance > 0 || firebaseWallets.count > 0
+      ? firebaseWallets.totalBalance
+      : (await safeQuerySum('wallets', 'balance'));
     const stats = { users, wallets, transactions, rooms, totalBalance };
     return NextResponse.json({ success: true, stats });
   } catch (error: any) {

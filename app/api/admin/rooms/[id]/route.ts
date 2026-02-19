@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
+import { invalidateRoomsCache } from '../route';
 
 const ROOMS_COLLECTION = 'rooms';
 
@@ -55,6 +56,7 @@ export async function PATCH(
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
     await docRef.update(updates);
+    invalidateRoomsCache();
 
     const updated = await docRef.get();
     const admin = await getCurrentAdminUser();
@@ -96,6 +98,7 @@ export async function DELETE(
     }
 
     await docRef.delete();
+    invalidateRoomsCache();
 
     const admin = await getCurrentAdminUser();
     if (admin) logAdminAction({ adminUserId: admin.id, adminEmail: admin.email, action: 'room_deleted', targetType: 'room', targetId: roomId });

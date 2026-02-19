@@ -5,6 +5,13 @@ import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
 
 const ROOMS_COLLECTION = 'rooms';
+const ROOMS_CACHE_TTL_MS = 60 * 1000; // 1 min pour limiter les lectures Firestore
+
+let roomsCache: { rooms: MappedRoom[]; at: number } | null = null;
+
+export function invalidateRoomsCache() {
+  roomsCache = null;
+}
 
 interface MappedRoom {
   id: string;
@@ -39,19 +46,40 @@ export async function GET() {
     const db = getAdminFirestore();
     if (!db) {
       return NextResponse.json(
-        { error: 'Firestore non configuré (Firebase Admin). Vérifiez FIREBASE_CLIENT_EMAIL et FIREBASE_PRIVATE_KEY.' },
+        { error: 'Firestore non configuré. Dans .env.local ajoutez FIREBASE_SERVICE_ACCOUNT_PATH=./votre-fichier-compte-service.json (chemin vers le JSON téléchargé depuis la console Firebase).' },
         { status: 503 }
       );
     }
 
-    const snapshot = await db.collection(ROOMS_COLLECTION)
-      .where('type', '==', 'public')
-      .get();
+    const now = Date.now();
+    if (roomsCache && now - roomsCache.at < ROOMS_CACHE_TTL_MS) {
+      return NextResponse.json({ success: true, rooms: roomsCache.rooms });
+    }
 
-    const rooms = snapshot.docs
-      .map((doc) => mapRoom(doc.id, doc.data()))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    return NextResponse.json({ success: true, rooms });
+    try {
+      const snapshot = await db.collection(ROOMS_COLLECTION)
+        .where('type', '==', 'public')
+        .get();
+
+      const rooms = snapshot.docs
+        .map((doc) => mapRoom(doc.id, doc.data()))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      roomsCache = { rooms, at: Date.now() };
+      return NextResponse.json({ success: true, rooms });
+    } catch (firestoreErr: any) {
+      const isQuota = firestoreErr?.code === 8 || String(firestoreErr?.message || '').includes('Quota exceeded') || String(firestoreErr?.code === 'RESOURCE_EXHAUSTED');
+      if (isQuota && roomsCache) {
+        return NextResponse.json({ success: true, rooms: roomsCache.rooms, quotaWarning: true });
+      }
+      if (isQuota) {
+        console.error('Erreur admin rooms GET (quota Firestore):', firestoreErr?.message);
+        return NextResponse.json(
+          { error: 'Quota Firestore dépassé. Réessayez dans quelques minutes ou vérifiez l’usage dans la console Firebase.' },
+          { status: 503 }
+        );
+      }
+      throw firestoreErr;
+    }
   } catch (error: any) {
     console.error('Erreur admin rooms GET:', error);
     return NextResponse.json(
@@ -80,7 +108,7 @@ export async function POST(request: NextRequest) {
     const db = getAdminFirestore();
     if (!db) {
       return NextResponse.json(
-        { error: 'Firestore non configuré (Firebase Admin).' },
+        { error: 'Firestore non configuré. Dans .env.local ajoutez FIREBASE_SERVICE_ACCOUNT_PATH=./votre-fichier-compte-service.json' },
         { status: 503 }
       );
     }
@@ -99,6 +127,7 @@ export async function POST(request: NextRequest) {
       createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
     };
     await docRef.set(payload);
+    invalidateRoomsCache();
 
     const currentAdmin = await getCurrentAdminUser();
     if (currentAdmin) logAdminAction({ adminUserId: currentAdmin.id, adminEmail: currentAdmin.email, action: 'room_created', targetType: 'room', targetId: roomId, details: name });

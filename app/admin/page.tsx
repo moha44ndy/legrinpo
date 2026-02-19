@@ -133,6 +133,7 @@ export default function AdminDashboardPage() {
   const [roomEditSaving, setRoomEditSaving] = useState(false);
   const [roomEditError, setRoomEditError] = useState<string | null>(null);
   const [deletingRoomId, setDeletingRoomId] = useState<number | string | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<AdminRoom | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -460,8 +461,8 @@ export default function AdminDashboardPage() {
   }, [editRoom, editRoomForm]);
 
   const deleteRoom = useCallback(async (r: AdminRoom) => {
-    if (!window.confirm(`Supprimer le salon "${r.name}" ? Les messages associés pourront être supprimés.`)) return;
     setDeletingRoomId(r.id);
+    setRoomToDelete(null);
     setRoomsError(null);
     try {
       const res = await fetch(`/api/admin/rooms/${r.id}`, { method: 'DELETE' });
@@ -712,12 +713,6 @@ export default function AdminDashboardPage() {
                       <span className="admin-card-value">{formatNumber(stats.users)}</span>
                     </div>
                   </article>
-                  <article className="admin-card admin-card-wallets">
-                    <div className="admin-card-body">
-                      <span className="admin-card-label">Portefeuilles</span>
-                      <span className="admin-card-value">{formatNumber(stats.wallets)}</span>
-                    </div>
-                  </article>
                   <article className="admin-card admin-card-transactions">
                     <div className="admin-card-body">
                       <span className="admin-card-label">Transactions</span>
@@ -930,23 +925,47 @@ export default function AdminDashboardPage() {
                         <td>{formatDate(r.createdAt)}</td>
                         <td>
                           <div className="admin-row-actions">
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn-edit"
-                              onClick={() => openEditRoom(r)}
-                              title="Modifier le salon"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn-delete"
-                              onClick={() => deleteRoom(r)}
-                              disabled={deletingRoomId === r.id}
-                              title="Supprimer le salon"
-                            >
-                              {deletingRoomId === r.id ? '...' : 'Supprimer'}
-                            </button>
+                            {roomToDelete?.id === r.id ? (
+                              <>
+                                <span className="admin-confirm-label">Supprimer &quot;{r.name || r.roomId}&quot; ?</span>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn-promote"
+                                  onClick={() => { deleteRoom(r); setRoomToDelete(null); }}
+                                  disabled={deletingRoomId === r.id}
+                                >
+                                  {deletingRoomId === r.id ? '...' : 'Confirmer'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn-edit"
+                                  onClick={() => setRoomToDelete(null)}
+                                  disabled={deletingRoomId === r.id}
+                                >
+                                  Annuler
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn-edit"
+                                  onClick={() => openEditRoom(r)}
+                                  title="Modifier le salon"
+                                >
+                                  Modifier
+                                </button>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn-delete"
+                                  onClick={() => setRoomToDelete(r)}
+                                  disabled={deletingRoomId !== null}
+                                  title="Supprimer le salon"
+                                >
+                                  Supprimer
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
