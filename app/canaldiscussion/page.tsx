@@ -7,7 +7,7 @@ import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/
 import Wallet from '@/components/Wallet';
 import { IconGlobe, IconAes, IconCemac, IconUemoa, IconHandshake, IconBriefcase, IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import '../globals.css';
 import './canaldiscussion-wa.css';
 
@@ -33,19 +33,7 @@ export default function CanalDiscussionPage() {
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user, ou générer un ID temporaire
   const userId = userProfile?.uid || user?.uid || (user?.id ? `db_${user.id}` : `temp_${Date.now()}`);
-  
-  // Debug: vérifier l'ID utilisateur
-  useEffect(() => {
-    if (user || userProfile) {
-      console.log('User data pour Wallet:', { 
-        user, 
-        userProfile, 
-        userId,
-        hasUid: !!(userProfile?.uid || user?.uid)
-      });
-    }
-  }, [user, userProfile, userId]);
-  
+
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinModalMode, setJoinModalMode] = useState<'choice' | 'create' | 'join'>('choice');
   const [roomName, setRoomName] = useState('');
@@ -166,13 +154,45 @@ export default function CanalDiscussionPage() {
         };
       };
 
-      // Ajouter les discussions publiques par défaut
-      const publicRooms: { id: string; name: string; description: string; iconKey: PublicIconKey }[] = [
+      // Les 4 salons publics par défaut (toujours affichés)
+      const defaultPublicRooms: { id: string; name: string; description: string; iconKey: PublicIconKey }[] = [
         { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', iconKey: 'aes' },
         { id: 'public_cemac', name: 'CEMAC', description: 'Communauté Économique et Monétaire', iconKey: 'cemac' },
         { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', iconKey: 'uemoa' },
         { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', iconKey: 'globeAlt' }
       ];
+      const defaultIds = new Set(defaultPublicRooms.map((r) => r.id));
+      let publicRooms: { id: string; name: string; description: string; iconKey?: PublicIconKey }[] = [...defaultPublicRooms];
+      if (db) {
+        try {
+          const roomsRef = collection(db, 'rooms');
+          const q = query(roomsRef, where('type', '==', 'public'));
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+            const iconByRoomId: Record<string, PublicIconKey> = {
+              public_aes: 'aes',
+              public_cemac: 'cemac',
+              public_uemoa: 'uemoa',
+              public_autres: 'globeAlt'
+            };
+            const fromFirebase = snapshot.docs
+              .filter((doc) => !defaultIds.has(doc.id))
+              .map((doc) => {
+                const d = doc.data();
+                return {
+                  id: doc.id,
+                  name: (d.name as string) || doc.id,
+                  description: (d.description as string) || '',
+                  iconKey: iconByRoomId[doc.id]
+                };
+              })
+              .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            publicRooms = [...defaultPublicRooms, ...fromFirebase];
+          }
+        } catch (err) {
+          console.error('Erreur chargement salons publics Firebase:', err);
+        }
+      }
 
       for (const publicRoom of publicRooms) {
         const lastMessage = await getLastMessage(publicRoom.id);
@@ -183,12 +203,12 @@ export default function CanalDiscussionPage() {
           isPrivate: false,
           lastMessage: lastMessage,
           timestamp: new Date().toISOString(),
-          avatar: { char: publicRoom.name.charAt(0), color: '#d32f2f' },
+          avatar: { char: (publicRoom.name || '?').charAt(0), color: '#d32f2f' },
           iconKey: publicRoom.iconKey,
           room: {
             id: publicRoom.id,
             name: publicRoom.name,
-            description: publicRoom.description,
+            description: publicRoom.description || '',
             type: 'public',
             createdAt: new Date().toISOString()
           }

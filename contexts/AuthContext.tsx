@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { fetchWithErrorToast } from '@/utils/api';
 
 interface UserProfile {
   id: number;
@@ -51,8 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setUserProfile(null);
         }
-      } catch (error) {
-        console.error('Erreur lors du chargement de l\'utilisateur:', error);
+      } catch {
         setUser(null);
         setUserProfile(null);
       } finally {
@@ -65,8 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      console.log('Tentative d\'inscription pour:', email);
-      
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -84,25 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.success && data.user) {
-        console.log('Utilisateur créé avec succès:', data.user.id);
         setUser(data.user);
         setUserProfile(data.user);
       }
     } catch (error: any) {
-      console.error('Erreur complète lors de l\'inscription:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack,
-      });
       throw error;
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('Tentative de connexion pour:', email);
-      
-      const response = await fetch('/api/auth/login', {
+      const response = await fetchWithErrorToast('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

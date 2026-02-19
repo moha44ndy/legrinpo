@@ -91,6 +91,38 @@
   color: #e8ecf5;
 }
 
+/* Sur mobile : onglets scrollables horizontalement */
+@media (max-width: 768px) {
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: -0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(74, 158, 255, 0.4) transparent;
+  }
+  .admin-tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .admin-tabs::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .admin-tabs::-webkit-scrollbar-thumb {
+    background: rgba(74, 158, 255, 0.4);
+    border-radius: 4px;
+  }
+  .admin-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
 /* ---------- Main ---------- */
 .admin-main {
   max-width: 1100px;

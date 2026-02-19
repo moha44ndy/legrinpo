@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { getOrCreateWallet, getBalance, Wallet } from '@/utils/wallet';
 
 export function useWallet(userId: string) {
@@ -15,32 +17,52 @@ export function useWallet(userId: string) {
       return;
     }
 
+    let unsubscribe: (() => void) | null = null;
+
     const loadWallet = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log('Chargement du portefeuille pour userId:', userId);
         const walletData = await getOrCreateWallet(userId);
-        console.log('Portefeuille chargé:', walletData);
         setWallet(walletData);
         setBalance(walletData.balance || 0);
       } catch (err: any) {
-        console.error('Erreur complète lors du chargement du portefeuille:', {
-          error: err,
-          message: err?.message,
-          stack: err?.stack,
-          userId,
-        });
+        console.error('Erreur chargement du portefeuille:', err);
         setError(err?.message || 'Impossible de charger le portefeuille');
       } finally {
         setLoading(false);
       }
+
+      if (!db) return;
+      const walletRef = doc(db, 'wallets', userId);
+      unsubscribe = onSnapshot(
+        walletRef,
+        (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            const w: Wallet = {
+              userId: data.userId || userId,
+              balance: data.balance ?? 0,
+              totalEarned: data.totalEarned ?? 0,
+              totalSpent: data.totalSpent ?? 0,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+            };
+            setWallet(w);
+            setBalance(w.balance);
+          }
+        },
+        (err) => {
+          console.error('useWallet onSnapshot error:', err);
+        }
+      );
     };
 
     loadWallet();
 
-    // Écouter les changements en temps réel
-    // TODO: Implémenter avec onSnapshot pour les mises à jour en temps réel
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [userId]);
 
   const refreshBalance = async () => {

@@ -69,6 +69,16 @@ Cette application utilise Firebase Firestore pour le chat en temps réel. Assure
 2. Les règles de sécurité Firestore autorisent la lecture/écriture pour votre application
 3. Les variables d'environnement sont correctement configurées
 
+### Déployer les règles Firestore et Storage
+
+Après modification de `firestore.rules` ou `storage.rules` :
+
+```bash
+npx firebase deploy --only firestore,storage
+```
+
+Ou avec le script npm : `npm run firebase:deploy:rules` (nécessite la CLI Firebase : `npm i -g firebase-tools` et `firebase login`).
+
 ## ✨ Fonctionnalités
 
 - ✅ Création de salons privés avec mot de passe

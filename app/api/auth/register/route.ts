@@ -4,8 +4,17 @@ import { query } from '@/lib/db';
 import { randomUUID } from 'crypto';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, 'auth:register', { windowMs: 60 * 1000, max: 5 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de tentatives d\'inscription. Réessayez dans quelques minutes.' },
+      { status: 429, headers: rateLimit.retryAfterMs ? { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } : {} }
+    );
+  }
   try {
     const body = await request.json();
     const { email, password, username } = body;
@@ -92,9 +101,8 @@ export async function POST(request: NextRequest) {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        console.log('Portefeuille Firestore créé pour uid:', uid);
       } catch (firestoreError: any) {
-        console.error('Erreur lors de la création du portefeuille Firestore:', firestoreError);
+        logger.error('Erreur création portefeuille Firestore', { uid, err: firestoreError?.message });
         // Ne pas bloquer l'inscription si Firestore échoue
       }
     }
@@ -126,7 +134,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Erreur lors de l\'inscription:', error);
+    logger.error('Erreur inscription', { err: error?.message });
     return NextResponse.json(
       { error: 'Erreur lors de l\'inscription', details: error.message },
       { status: 500 }

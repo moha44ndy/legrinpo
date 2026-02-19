@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import admin from 'firebase-admin';
 import { query } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin } from '@/lib/admin-auth';
+import { logger } from '@/lib/logger';
 
-const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const analyticsCache = new Map<string, { data: unknown; expiresAt: number }>();
+
+const BALANCE_RANGES = [
+  { label: '0', min: 0, max: 0 },
+  { label: '1 - 1 000', min: 1, max: 1000 },
+  { label: '1 001 - 5 000', min: 1001, max: 5000 },
+  { label: '5 001 - 20 000', min: 5001, max: 20000 },
+  { label: '20 001+', min: 20001, max: 1e9 },
+];
 
 export async function GET(request: NextRequest) {
   if (!(await isCurrentUserAdmin())) {
@@ -11,7 +22,12 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const period = searchParams.get('period') || 'month'; // day | week | month
+  const period = searchParams.get('period') || 'month';
+  const cacheKey = `advanced:${period}`;
+  const cached = analyticsCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) {
+    return NextResponse.json({ success: true, data: cached.data, period, cached: true });
+  }
 
   const result: {
     registrations: { date: string; count: number }[];
@@ -25,68 +41,83 @@ export async function GET(request: NextRequest) {
     balanceDistribution: [],
   };
 
+  const now = new Date();
+  let from: Date;
+  if (period === 'day') from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  else if (period === 'week') from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  else from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
   try {
-    if (useSupabase && supabaseAdmin) {
-      const now = new Date();
-      let from: Date;
-      if (period === 'day') from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      else if (period === 'week') from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      else from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const fromStr = from.toISOString().slice(0, 19);
+    // Inscriptions : depuis la base SQL (users)
+    const periodDays = period === 'day' ? 1 : period === 'week' ? 7 : 30;
+    const regRows = await query(
+      `SELECT DATE(created_at) AS d, COUNT(*) AS c FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY DATE(created_at) ORDER BY d`,
+      [periodDays]
+    ).catch(() => []);
+    result.registrations = Array.isArray(regRows)
+      ? (regRows as { d: string; c: number }[]).map((r) => ({ date: r.d, count: r.c }))
+      : [];
+  } catch {
+    // garder result.registrations vide
+  }
 
-      const resUsers = await supabaseAdmin.from('users').select('created_at').gte('created_at', fromStr);
-      const rows = Array.isArray(resUsers.data) ? resUsers.data : [];
-      const byDate: Record<string, number> = {};
-      rows.forEach((r: { created_at?: string }) => {
-        const d = r.created_at?.slice(0, 10) || '';
-        if (d) byDate[d] = (byDate[d] || 0) + 1;
-      });
-      result.registrations = Object.entries(byDate).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+  const db = getAdminFirestore();
+  if (db) {
+    try {
+      const fromTimestamp = admin.firestore.Timestamp.fromDate(from);
 
-      const resMsg = await supabaseAdmin.from('messages').select('*', { count: 'exact', head: true }).gte('created_at', fromStr);
-      result.messagesByPeriod = typeof resMsg.count === 'number' ? resMsg.count : 0;
+      // Liste des salons (chats = roomIds)
+      const chatsSnap = await db.collection('chats').get();
+      const roomIds = chatsSnap.docs.map((d) => d.id);
 
-      const resMsgByRoom = await supabaseAdmin.from('messages').select('room_id').gte('created_at', fromStr);
-      const msgByRoom = Array.isArray(resMsgByRoom.data) ? resMsgByRoom.data : [];
       const roomCounts: Record<string, number> = {};
-      msgByRoom.forEach((r: { room_id?: string }) => {
-        const id = r.room_id || '';
-        if (id) roomCounts[id] = (roomCounts[id] || 0) + 1;
-      });
-      const roomIds = Object.keys(roomCounts).slice(0, 10);
-      if (roomIds.length > 0) {
-        const resRooms = await supabaseAdmin.from('rooms').select('room_id, name').in('room_id', roomIds);
-        const roomsList = Array.isArray(resRooms.data) ? resRooms.data : [];
-        const nameMap: Record<string, string> = {};
-        roomsList.forEach((r: { room_id: string; name: string }) => { nameMap[r.room_id] = r.name || r.room_id; });
-        result.activeRooms = roomIds.map((roomId) => ({ roomId, name: nameMap[roomId] || roomId, count: roomCounts[roomId] }))
-          .sort((a, b) => b.count - a.count);
+      let totalMessages = 0;
+
+      for (const roomId of roomIds) {
+        const countQuery = db
+          .collection('chats')
+          .doc(roomId)
+          .collection('messages')
+          .where('timestamp', '>=', fromTimestamp)
+          .count();
+        const countSnap = await countQuery.get();
+        const count = (countSnap.data() as { count?: number } | undefined)?.count ?? 0;
+        if (count > 0) {
+          roomCounts[roomId] = count;
+          totalMessages += count;
+        }
       }
 
-      const resWallets = await supabaseAdmin.from('wallets').select('balance');
-      const walletsList = Array.isArray(resWallets.data) ? resWallets.data : [];
-      const balances = walletsList.map((w: { balance?: number }) => Number(w.balance) || 0);
-      const ranges = [
-        { label: '0', min: 0, max: 0 },
-        { label: '1 - 1 000', min: 1, max: 1000 },
-        { label: '1 001 - 5 000', min: 1001, max: 5000 },
-        { label: '5 001 - 20 000', min: 5001, max: 20000 },
-        { label: '20 001+', min: 20001, max: 1e9 },
-      ];
-      result.balanceDistribution = ranges.map((r) => ({
+      result.messagesByPeriod = totalMessages;
+
+      // Noms des salons (Firebase collection rooms)
+      const roomsSnap = await db.collection('rooms').where('type', '==', 'public').get();
+      const nameMap: Record<string, string> = {};
+      roomsSnap.docs.forEach((d) => {
+        const data = d.data();
+        nameMap[d.id] = (data.name as string) || d.id;
+      });
+
+      result.activeRooms = Object.entries(roomCounts)
+        .map(([roomId, count]) => ({ roomId, name: nameMap[roomId] || roomId, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // Répartition des soldes (wallets Firebase)
+      const walletsSnap = await db.collection('wallets').get();
+      const balances = walletsSnap.docs.map((d) => Number(d.data().balance) || 0);
+      result.balanceDistribution = BALANCE_RANGES.map((r) => ({
         range: r.label,
         count: balances.filter((b) => b >= r.min && b <= r.max).length,
       }));
-    } else {
-      const periodDays = period === 'day' ? 1 : period === 'week' ? 7 : 30;
-      const regRows = await query(
-        `SELECT DATE(created_at) AS d, COUNT(*) AS c FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY) GROUP BY DATE(created_at) ORDER BY d`,
-        [periodDays]
-      ).catch(() => []);
-      result.registrations = Array.isArray(regRows)
-        ? (regRows as { d: string; c: number }[]).map((r) => ({ date: r.d, count: r.c }))
-        : [];
+    } catch (err: any) {
+    logger.error('Erreur admin stats/advanced (Firebase)', { err: err?.message });
+  }
+  }
 
+  if (result.messagesByPeriod === 0 && result.balanceDistribution.every((r) => r.count === 0)) {
+    try {
+      const periodDays = period === 'day' ? 1 : period === 'week' ? 7 : 30;
       const msgRows = await query(
         `SELECT COUNT(*) AS c FROM messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`,
         [periodDays]
@@ -119,7 +150,7 @@ export async function GET(request: NextRequest) {
           SUM(CASE WHEN balance > 20000 THEN 1 ELSE 0 END) AS r4
         FROM wallets`
       ).catch(() => []);
-      const r = Array.isArray(balanceRows) && balanceRows.length > 0 ? balanceRows[0] as any : {};
+      const r = Array.isArray(balanceRows) && balanceRows.length > 0 ? (balanceRows[0] as any) : {};
       result.balanceDistribution = [
         { range: '0', count: Number(r.r0) || 0 },
         { range: '1 - 1 000', count: Number(r.r1) || 0 },
@@ -127,11 +158,11 @@ export async function GET(request: NextRequest) {
         { range: '5 001 - 20 000', count: Number(r.r3) || 0 },
         { range: '20 001+', count: Number(r.r4) || 0 },
       ];
+    } catch {
+      // fallback déjà à vide
     }
-  } catch (err: any) {
-    console.error('Erreur admin stats/advanced (données partielles):', err);
-    // On garde result tel quel (déjà initialisé à vide ou partiellement rempli)
   }
 
+  analyticsCache.set(cacheKey, { data: result, expiresAt: Date.now() + ANALYTICS_CACHE_TTL_MS });
   return NextResponse.json({ success: true, data: result, period });
 }

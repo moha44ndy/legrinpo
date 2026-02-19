@@ -31,7 +31,7 @@ interface AdminUser {
 }
 
 interface AdminRoom {
-  id: number;
+  id: number | string; // number (legacy Supabase) ou string roomId (Firebase)
   roomId: string;
   name: string;
   description: string;
@@ -128,11 +128,12 @@ export default function AdminDashboardPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [roomFormAdd, setRoomFormAdd] = useState({ roomId: '', name: '', description: '' });
   const [addRoomSaving, setAddRoomSaving] = useState(false);
+  const [seedRoomLoading, setSeedRoomLoading] = useState(false);
   const [editRoom, setEditRoom] = useState<AdminRoom | null>(null);
   const [editRoomForm, setEditRoomForm] = useState({ name: '', description: '' });
   const [roomEditSaving, setRoomEditSaving] = useState(false);
   const [roomEditError, setRoomEditError] = useState<string | null>(null);
-  const [deletingRoomId, setDeletingRoomId] = useState<number | null>(null);
+  const [deletingRoomId, setDeletingRoomId] = useState<number | string | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -142,6 +143,7 @@ export default function AdminDashboardPage() {
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [withdrawalsList, setWithdrawalsList] = useState<AdminWithdrawal[]>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
   const [withdrawalUpdatingId, setWithdrawalUpdatingId] = useState<number | null>(null);
   const [loginLogs, setLoginLogs] = useState<{ id: number; userId: number | null; email: string; ip: string | null; createdAt: string }[]>([]);
   const [actionLogs, setActionLogs] = useState<{ id: number; adminEmail: string; action: string; targetType: string | null; targetId: string | null; details: string | null; createdAt: string }[]>([]);
@@ -257,6 +259,21 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  const seedDefaultRooms = useCallback(async () => {
+    setSeedRoomLoading(true);
+    setRoomsError(null);
+    try {
+      const res = await fetch('/api/admin/rooms/seed', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      if (data.created > 0) await fetchRooms();
+    } catch (e: any) {
+      setRoomsError(e?.message || 'Erreur création des salons par défaut');
+    } finally {
+      setSeedRoomLoading(false);
+    }
+  }, [fetchRooms]);
+
   useEffect(() => {
     if (tab === 'rooms' && user) fetchRooms();
   }, [tab, user, fetchRooms]);
@@ -348,6 +365,7 @@ export default function AdminDashboardPage() {
 
   const processWithdrawal = useCallback(async (id: number, status: 'approved' | 'rejected') => {
     setWithdrawalUpdatingId(id);
+    setWithdrawalsError(null);
     try {
       const res = await fetch(`/api/admin/withdrawals/${id}`, {
         method: 'PATCH',
@@ -358,7 +376,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error(data.error || 'Erreur');
       setWithdrawalsList((prev) => prev.map((w) => (w.id === id ? { ...w, status } : w)));
     } catch (e: any) {
-      setRoomsError(e?.message || 'Erreur');
+      setWithdrawalsError(e?.message || 'Erreur');
     } finally {
       setWithdrawalUpdatingId(null);
     }
@@ -511,6 +529,7 @@ export default function AdminDashboardPage() {
     setError(null);
     setUsersError(null);
     setRoomsError(null);
+    setWithdrawalsError(null);
     setSettingsError(null);
   }, []);
 
@@ -853,6 +872,15 @@ export default function AdminDashboardPage() {
               >
                 {showAddRoom ? 'Annuler' : 'Ajouter un salon'}
               </button>
+              <button
+                type="button"
+                className="admin-btn admin-btn-edit"
+                onClick={seedDefaultRooms}
+                disabled={seedRoomLoading}
+                title="Créer les 4 salons par défaut (AES, CEMAC, UEMOA, Globale) s'ils n'existent pas"
+              >
+                {seedRoomLoading ? 'Création...' : 'Créer les 4 salons par défaut'}
+              </button>
             </div>
             {showAddRoom && (
               <form
@@ -1058,6 +1086,7 @@ export default function AdminDashboardPage() {
         {tab === 'withdrawals' && (
           <section className="admin-section">
             <h2 className="admin-section-title">Demandes de retrait</h2>
+            {withdrawalsError && <div className="admin-error">{withdrawalsError}</div>}
             {withdrawalsLoading && <div className="admin-loading-inline">Chargement...</div>}
             {!withdrawalsLoading && withdrawalsList.length === 0 && (
               <div className="admin-empty-state"><p className="admin-empty-state-title">Aucune demande</p></div>

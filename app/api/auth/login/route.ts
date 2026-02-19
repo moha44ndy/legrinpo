@@ -5,8 +5,17 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { logLogin } from '@/lib/admin-logger';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, 'auth:login', { windowMs: 60 * 1000, max: 15 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de tentatives de connexion. Réessayez dans quelques minutes.' },
+      { status: 429, headers: rateLimit.retryAfterMs ? { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } : {} }
+    );
+  }
   try {
     const body = await request.json();
     const { email, password } = body;
@@ -80,13 +89,9 @@ export async function POST(request: NextRequest) {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           });
-          console.log('Portefeuille Firestore créé pour uid:', user.uid);
-        } else {
-          // Le wallet existe déjà, c'est bon
-          console.log('Portefeuille Firestore existant trouvé pour uid:', user.uid);
         }
       } catch (firestoreError: any) {
-        console.error('Erreur lors de la vérification/création du portefeuille Firestore:', firestoreError);
+        logger.error('Erreur vérification/création portefeuille Firestore', { uid: user.uid, err: firestoreError?.message });
         // Ne pas bloquer la connexion si Firestore échoue
       }
     }
@@ -109,7 +114,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Erreur lors de la connexion:', error);
+    logger.error('Erreur connexion', { err: error?.message });
     return NextResponse.json(
       { error: 'Erreur lors de la connexion', details: error.message },
       { status: 500 }

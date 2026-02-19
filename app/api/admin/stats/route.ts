@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
@@ -37,20 +38,33 @@ async function safeQuerySum(table: string, column: string): Promise<number> {
   }
 }
 
+async function getFirebaseRoomsCount(): Promise<number> {
+  const db = getAdminFirestore();
+  if (!db) return 0;
+  try {
+    const snapshot = await db.collection('rooms').where('type', '==', 'public').get();
+    return snapshot.size;
+  } catch {
+    return 0;
+  }
+}
+
 export async function GET() {
   try {
     if (!(await isCurrentUserAdmin())) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    const [users, wallets, transactions, rooms, totalBalance] = await Promise.all([
+    const [users, wallets, transactions, roomsSql, totalBalance, roomsFirebase] = await Promise.all([
       safeQueryCount('users'),
       safeQueryCount('wallets'),
       safeQueryCount('transactions'),
-      safeQueryCount('rooms'),
+      safeQueryCount('rooms').catch(() => 0),
       safeQuerySum('wallets', 'balance'),
+      getFirebaseRoomsCount(),
     ]);
 
+    const rooms = roomsFirebase > 0 ? roomsFirebase : roomsSql;
     const stats = { users, wallets, transactions, rooms, totalBalance };
     return NextResponse.json({ success: true, stats });
   } catch (error: any) {

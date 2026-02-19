@@ -1,4 +1,7 @@
 rules_version = '2';
+// L'authentification des utilisateurs reste sur Supabase/session (cookies). Les accès Firestore
+// sont contrôlés côté app (API, session). Ces règles permettent lecture/écriture côté client
+// pour le chat et les portefeuilles ; en prod vous pouvez restreindre si besoin.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -51,6 +54,13 @@ service cloud.firestore {
         allow update: if false; // Les transactions ne doivent pas être modifiées
         allow delete: if false; // Les transactions ne doivent pas être supprimées
       }
+    }
+
+    // ===== SALONS PUBLICS (liste créée par l'admin) =====
+    // Lecture par tous pour afficher la liste sur le canal de discussion ; écriture réservée au serveur (Firebase Admin)
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow create, update, delete: if false;
     }
 
     // ===== MÉTADONNÉES DES GROUPES =====

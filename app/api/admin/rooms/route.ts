@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { supabaseAdmin } from '@/lib/supabase';
+import firebaseAdmin from 'firebase-admin';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
 
-const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+const ROOMS_COLLECTION = 'rooms';
 
-function mapRoom(r: any) {
+interface MappedRoom {
+  id: string;
+  roomId: string;
+  name: string;
+  description: string;
+  type: string;
+  createdAt: string;
+}
+
+function mapRoom(docId: string, data: Record<string, unknown> & { createdAt?: { toMillis?: () => number } | string }): MappedRoom {
+  const raw = data.createdAt;
+  const createdAt = raw && typeof raw === 'object' && typeof (raw as { toMillis?: () => number }).toMillis === 'function'
+    ? new Date((raw as { toMillis: () => number }).toMillis()).toISOString()
+    : (typeof raw === 'string' ? raw : '');
   return {
-    id: r.id,
-    roomId: r.room_id ?? r.roomId ?? '',
-    name: r.name ?? '',
-    description: r.description ?? '',
-    type: r.type ?? 'public',
-    createdAt: r.created_at ?? '',
+    id: docId,
+    roomId: docId,
+    name: String(data.name ?? ''),
+    description: String(data.description ?? ''),
+    type: String(data.type ?? 'public'),
+    createdAt,
   };
 }
 
@@ -23,44 +36,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    let rows: any[] = [];
-
-    if (useSupabase && supabaseAdmin) {
-      // Supabase : appel direct pour appliquer le filtre type = 'public'
-      const { data, error } = await supabaseAdmin
-        .from('rooms')
-        .select('id, room_id, name, description, type, created_at')
-        .eq('type', 'public')
-        .order('name');
-      if (error) {
-        // Table absente ou autre erreur : renvoyer liste vide au lieu d'erreur
-        if (error.code === '42P01' || error.message?.includes('does not exist')) {
-          rows = [];
-        } else {
-          console.error('Erreur Supabase rooms:', error);
-          return NextResponse.json(
-            { error: 'Erreur chargement des salons', details: error.message },
-            { status: 500 }
-          );
-        }
-      } else {
-        rows = data ?? [];
-      }
-    } else {
-      //
-      const result = await query(
-        "SELECT id, room_id, name, description, type, created_at FROM rooms WHERE type = 'public' ORDER BY name"
-      ).catch((err) => {
-        console.error('Erreur rooms:', err);
-        return [];
-      });
-      rows = Array.isArray(result) ? result : [];
+    const db = getAdminFirestore();
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Firestore non configuré (Firebase Admin). Vérifiez FIREBASE_CLIENT_EMAIL et FIREBASE_PRIVATE_KEY.' },
+        { status: 503 }
+      );
     }
 
-    const rooms = rows.map(mapRoom);
+    const snapshot = await db.collection(ROOMS_COLLECTION)
+      .where('type', '==', 'public')
+      .get();
+
+    const rooms = snapshot.docs
+      .map((doc) => mapRoom(doc.id, doc.data()))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return NextResponse.json({ success: true, rooms });
   } catch (error: any) {
-    console.error('Erreur admin rooms:', error);
+    console.error('Erreur admin rooms GET:', error);
     return NextResponse.json(
       { error: 'Erreur chargement des salons', details: error?.message },
       { status: 500 }
@@ -84,40 +77,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (useSupabase && supabaseAdmin) {
-      const { data, error } = await supabaseAdmin
-        .from('rooms')
-        .insert({
-          room_id: roomId,
-          name,
-          description: description || null,
-          type: 'public',
-        })
-        .select('id, room_id, name, description, type, created_at')
-        .single();
-      if (error) {
-        if (error.code === '23505') {
-          return NextResponse.json({ error: 'Un salon avec cet identifiant existe déjà' }, { status: 400 });
-        }
-        throw error;
-      }
-      const admin = await getCurrentAdminUser();
-      if (admin) logAdminAction({ adminUserId: admin.id, adminEmail: admin.email, action: 'room_created', targetType: 'room', targetId: data?.id, details: name });
-      return NextResponse.json({ success: true, room: mapRoom(data) });
+    const db = getAdminFirestore();
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Firestore non configuré (Firebase Admin).' },
+        { status: 503 }
+      );
     }
 
-    await query(
-      'INSERT INTO rooms (room_id, name, description, type) VALUES (?, ?, ?, ?)',
-      [roomId, name, description || null, 'public']
-    );
-    const inserted = await query(
-      'SELECT id, room_id, name, description, type, created_at FROM rooms WHERE room_id = ?',
-      [roomId]
-    );
-    const row = Array.isArray(inserted) && inserted.length > 0 ? inserted[0] : null;
-    const admin = await getCurrentAdminUser();
-    if (admin) logAdminAction({ adminUserId: admin.id, adminEmail: admin.email, action: 'room_created', targetType: 'room', targetId: row?.id, details: name });
-    return NextResponse.json({ success: true, room: row ? mapRoom(row) : { roomId, name, description, type: 'public' } });
+    const docRef = db.collection(ROOMS_COLLECTION).doc(roomId);
+    const existing = await docRef.get();
+    if (existing.exists) {
+      return NextResponse.json({ error: 'Un salon avec cet identifiant existe déjà' }, { status: 400 });
+    }
+
+    const payload = {
+      roomId,
+      name,
+      description: description || '',
+      type: 'public',
+      createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+    };
+    await docRef.set(payload);
+
+    const currentAdmin = await getCurrentAdminUser();
+    if (currentAdmin) logAdminAction({ adminUserId: currentAdmin.id, adminEmail: currentAdmin.email, action: 'room_created', targetType: 'room', targetId: roomId, details: name });
+
+    const room = mapRoom(roomId, { ...payload, createdAt: new Date().toISOString() });
+    return NextResponse.json({ success: true, room });
   } catch (error: any) {
     console.error('Erreur admin create room:', error);
     return NextResponse.json(

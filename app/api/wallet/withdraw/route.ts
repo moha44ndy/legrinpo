@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { supabaseAdmin } from '@/lib/supabase';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 const WITHDRAW_EMAIL = process.env.WITHDRAW_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -23,6 +25,13 @@ function getMethodLabel(method: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, 'wallet:withdraw', { windowMs: 60 * 1000, max: 5 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de demandes de retrait. Réessayez dans quelques minutes.' },
+      { status: 429, headers: rateLimit.retryAfterMs ? { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } : {} }
+    );
+  }
   try {
     const body = await request.json();
     const { userId, username, userEmail, amount, method, country, phoneOrIban, fullName } = body;
@@ -98,7 +107,7 @@ export async function POST(request: NextRequest) {
     `;
 
     if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-      console.warn('Demande de retrait (SMTP non configuré):', { userId, username, userEmail, amount: amountNum, method, phoneOrIban, fullName });
+      logger.warn('Demande de retrait (SMTP non configuré)', { userId: userIdNum, amount: amountNum, method });
       return NextResponse.json({
         success: true,
         message: 'Demande enregistrée. Configurez SMTP pour recevoir la confirmation par email.',
@@ -106,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!WITHDRAW_EMAIL) {
-      console.warn('Demande de retrait (WITHDRAW_NOTIFICATION_EMAIL non configuré):', { userId, username, userEmail, amount: amountNum, method, phoneOrIban, fullName });
+      logger.warn('Demande de retrait (WITHDRAW_NOTIFICATION_EMAIL non configuré)', { userId: userIdNum });
     }
 
     const transporter = nodemailer.createTransport({
@@ -158,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Demande envoyée. Vous serez crédité sous 24 h après validation.' });
   } catch (err: any) {
-    console.error('Erreur API withdraw:', err);
+    logger.error('Erreur API withdraw', { err: err?.message });
     return NextResponse.json(
       { error: err?.message || 'Erreur lors de l\'envoi de la demande' },
       { status: 500 }

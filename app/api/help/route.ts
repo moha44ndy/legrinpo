@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import nodemailer from 'nodemailer';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 const HELP_EMAIL = process.env.HELP_NOTIFICATION_EMAIL || process.env.WITHDRAW_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -21,6 +23,13 @@ function getSubjectLabel(value: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, 'help', { windowMs: 60 * 1000, max: 10 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de demandes. Réessayez dans quelques minutes.' },
+      { status: 429, headers: rateLimit.retryAfterMs ? { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } : {} }
+    );
+  }
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get('session_token')?.value;
@@ -66,7 +75,7 @@ export async function POST(request: NextRequest) {
     ].join('\n');
 
     if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-      console.warn('[Aide] SMTP non configuré. Demande non envoyée par email:', { subject: subjectLabel, senderEmail, senderName });
+      logger.warn('Aide: SMTP non configuré', { subject: subjectLabel });
       return NextResponse.json({
         success: true,
         message: 'Demande enregistrée. Configurez SMTP pour recevoir les demandes par email.',
@@ -74,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!HELP_EMAIL) {
-      console.warn('[Aide] HELP_NOTIFICATION_EMAIL (ou WITHDRAW_NOTIFICATION_EMAIL / ADMIN_EMAIL) non configuré.');
+      logger.warn('Aide: HELP_NOTIFICATION_EMAIL non configuré');
       return NextResponse.json(
         { error: 'Réception des demandes d\'aide non configurée côté serveur.' },
         { status: 500 }
@@ -99,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Erreur API aide:', error);
+    logger.error('Erreur API aide', { err: error?.message });
     return NextResponse.json(
       { error: 'Erreur lors de l\'envoi de votre demande.' },
       { status: 500 }
