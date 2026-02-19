@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
-import { invalidateRoomsCache } from '@/lib/rooms-cache';
+import { invalidateRoomsCache } from '../../../../../lib/rooms-cache';
 
 const ROOMS_COLLECTION = 'rooms';
 

@@ -3,7 +3,7 @@ import firebaseAdmin from 'firebase-admin';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
-import { invalidateRoomsCache, getRoomsCache, setRoomsCache, ROOMS_CACHE_TTL_MS, type MappedRoom } from '@/lib/rooms-cache';
+import { invalidateRoomsCache, getRoomsCache, setRoomsCache, ROOMS_CACHE_TTL_MS, type MappedRoom } from '../../../../lib/rooms-cache';
 
 const ROOMS_COLLECTION = 'rooms';
 
