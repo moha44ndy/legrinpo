@@ -154,41 +154,30 @@ export default function CanalDiscussionPage() {
         };
       };
 
-      // Les 4 salons publics par défaut (toujours affichés)
-      const defaultPublicRooms: { id: string; name: string; description: string; iconKey: PublicIconKey }[] = [
-        { id: 'public_aes', name: 'AES', description: 'Alliance des États du Sahel', iconKey: 'aes' },
-        { id: 'public_cemac', name: 'CEMAC', description: 'Communauté Économique et Monétaire', iconKey: 'cemac' },
-        { id: 'public_uemoa', name: 'UEMOA', description: 'Union Économique', iconKey: 'uemoa' },
-        { id: 'public_autres', name: 'Globale Organisation', description: 'Organisation Globale', iconKey: 'globeAlt' }
-      ];
-      const defaultIds = new Set(defaultPublicRooms.map((r) => r.id));
-      let publicRooms: { id: string; name: string; description: string; iconKey?: PublicIconKey }[] = [...defaultPublicRooms];
+      // Salons publics : uniquement ceux présents dans Firebase (ajoutés par l'admin)
+      let publicRooms: { id: string; name: string; description: string; iconKey?: PublicIconKey }[] = [];
       if (db) {
         try {
           const roomsRef = collection(db, 'rooms');
           const q = query(roomsRef, where('type', '==', 'public'));
           const snapshot = await getDocs(q);
-          if (!snapshot.empty) {
-            const iconByRoomId: Record<string, PublicIconKey> = {
-              public_aes: 'aes',
-              public_cemac: 'cemac',
-              public_uemoa: 'uemoa',
-              public_autres: 'globeAlt'
-            };
-            const fromFirebase = snapshot.docs
-              .filter((doc) => !defaultIds.has(doc.id))
-              .map((doc) => {
-                const d = doc.data();
-                return {
-                  id: doc.id,
-                  name: (d.name as string) || doc.id,
-                  description: (d.description as string) || '',
-                  iconKey: iconByRoomId[doc.id]
-                };
-              })
-              .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            publicRooms = [...defaultPublicRooms, ...fromFirebase];
-          }
+          const iconByRoomId: Record<string, PublicIconKey> = {
+            public_aes: 'aes',
+            public_cemac: 'cemac',
+            public_uemoa: 'uemoa',
+            public_autres: 'globeAlt'
+          };
+          publicRooms = snapshot.docs
+            .map((doc) => {
+              const d = doc.data();
+              return {
+                id: doc.id,
+                name: (d.name as string) || doc.id,
+                description: (d.description as string) || '',
+                iconKey: iconByRoomId[doc.id]
+              };
+            })
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         } catch (err) {
           console.error('Erreur chargement salons publics Firebase:', err);
         }
@@ -664,13 +653,6 @@ export default function CanalDiscussionPage() {
             {allChats
               .filter(chat => chat.id.startsWith('public_'))
               .map((chat) => {
-                const publicRoomInfo: { [key: string]: { description: string } } = {
-                  'public_aes': { description: 'Alliance des États du Sahel' },
-                  'public_cemac': { description: 'Communauté Économique et Monétaire' },
-                  'public_uemoa': { description: 'Union Économique' },
-                  'public_autres': { description: 'Organisation Globale' }
-                };
-                const info = publicRoomInfo[chat.id] || { description: '' };
                 const iconKey = chat.iconKey || 'globeAlt';
                 const PublicIcon = iconKey === 'aes' ? IconAes : iconKey === 'cemac' ? IconCemac : iconKey === 'uemoa' ? IconUemoa : iconKey === 'globe' ? IconGlobe : iconKey === 'handshake' ? IconHandshake : iconKey === 'briefcase' ? IconBriefcase : IconGlobeAlt;
                 return (
@@ -681,7 +663,7 @@ export default function CanalDiscussionPage() {
                   >
                     <span><PublicIcon size={24} /></span>
                     <span>{chat.room.name || chat.name}</span>
-                    <small>{info.description}</small>
+                    <small>{chat.room.description || ''}</small>
                   </button>
                 );
               })}

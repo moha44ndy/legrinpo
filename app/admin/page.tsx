@@ -128,7 +128,6 @@ export default function AdminDashboardPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [roomFormAdd, setRoomFormAdd] = useState({ roomId: '', name: '', description: '' });
   const [addRoomSaving, setAddRoomSaving] = useState(false);
-  const [seedRoomLoading, setSeedRoomLoading] = useState(false);
   const [editRoom, setEditRoom] = useState<AdminRoom | null>(null);
   const [editRoomForm, setEditRoomForm] = useState({ name: '', description: '' });
   const [roomEditSaving, setRoomEditSaving] = useState(false);
@@ -258,21 +257,6 @@ export default function AdminDashboardPage() {
       setRoomsLoading(false);
     }
   }, []);
-
-  const seedDefaultRooms = useCallback(async () => {
-    setSeedRoomLoading(true);
-    setRoomsError(null);
-    try {
-      const res = await fetch('/api/admin/rooms/seed', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur');
-      if (data.created > 0) await fetchRooms();
-    } catch (e: any) {
-      setRoomsError(e?.message || 'Erreur création des salons par défaut');
-    } finally {
-      setSeedRoomLoading(false);
-    }
-  }, [fetchRooms]);
 
   useEffect(() => {
     if (tab === 'rooms' && user) fetchRooms();
@@ -871,15 +855,6 @@ export default function AdminDashboardPage() {
                 aria-expanded={showAddRoom ? 'true' : 'false'}
               >
                 {showAddRoom ? 'Annuler' : 'Ajouter un salon'}
-              </button>
-              <button
-                type="button"
-                className="admin-btn admin-btn-edit"
-                onClick={seedDefaultRooms}
-                disabled={seedRoomLoading}
-                title="Créer les 4 salons par défaut (AES, CEMAC, UEMOA, Globale) s'ils n'existent pas"
-              >
-                {seedRoomLoading ? 'Création...' : 'Créer les 4 salons par défaut'}
               </button>
             </div>
             {showAddRoom && (
