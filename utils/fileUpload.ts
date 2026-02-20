@@ -100,9 +100,13 @@ export async function uploadAudio(
   if (audioBlob.size > MAX_AUDIO_SIZE) {
     throw new Error('La note vocale dépasse 1 minute. Durée maximale : 1 minute');
   }
+  if (audioBlob.size === 0) {
+    throw new Error('L\'enregistrement est vide. Réessayez en parlant plus longtemps.');
+  }
 
   const timestamp = Date.now();
-  const fileName = `voice_${timestamp}.webm`;
+  const ext = (audioBlob.type || 'audio/webm').split('/')[1]?.split(';')[0] || 'webm';
+  const fileName = `voice_${timestamp}.${ext}`;
   const storagePath = `chats/${roomId}/messages/${messageId}/${fileName}`;
   const storageRef = ref(storage, storagePath);
 
@@ -113,7 +117,7 @@ export async function uploadAudio(
     return {
       url: downloadURL,
       name: fileName,
-      type: 'audio/webm',
+      type: audioBlob.type || 'audio/webm',
       size: audioBlob.size,
     };
   } catch (error: any) {

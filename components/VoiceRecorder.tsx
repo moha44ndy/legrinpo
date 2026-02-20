@@ -229,6 +229,39 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
     });
   };
 
+  const stopAndSendAtMaxDuration = () => {
+    const mr = mediaRecorderRef.current;
+    if (!mr || mr.state === 'inactive') return;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (volumeIntervalRef.current) {
+      clearInterval(volumeIntervalRef.current);
+      volumeIntervalRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    setVolumeLevel(0);
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    setIsStopped(true);
+    mr.onstop = () => {
+      const mimeType = mr.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      mediaRecorderRef.current = null;
+      onRecordingComplete(audioBlob);
+    };
+    mr.stop();
+  };
+
   useImperativeHandle(ref, () => ({
     stopAndGetAudio,
     isRecording,
@@ -250,26 +283,30 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
         audioChunksRef.current = [];
       }
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus',
-      });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : '';
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
 
       mediaRecorder.ondataavailable = (event) => {
-        // Ne collecter des données que si l'enregistrement est actif
-        if (event.data.size > 0 && isRecording) {
+        // Toujours collecter les données (évite de perdre le dernier chunk quand on stop())
+        if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         setRecordedAudio(audioBlob);
         onStop(audioBlob);
         // Ne pas arrêter le stream pour pouvoir reprendre
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000); // Collecter des données toutes les secondes
+      mediaRecorder.start(100); // Collecter toutes les 100 ms pour ne pas perdre de données (surtout enregistrements courts)
       setIsRecording(true);
       isRecordingRef.current = true; // Mettre à jour la ref immédiatement
       setIsStopped(false);
@@ -334,27 +371,12 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
           
           const newDuration = prev + 1;
           
-          // Arrêter l'enregistrement si on atteint la durée maximale
+          // À 1 minute : arrêter et envoyer automatiquement
           if (newDuration >= maxDuration) {
-            // Arrêter les intervalles immédiatement AVANT d'appeler stopRecording
-            const currentInterval = intervalRef.current;
-            const currentVolumeInterval = volumeIntervalRef.current;
-            
-            if (currentInterval) {
-              clearInterval(currentInterval);
-              intervalRef.current = null;
-            }
-            if (currentVolumeInterval) {
-              clearInterval(currentVolumeInterval);
-              volumeIntervalRef.current = null;
-            }
-            
-            // Arrêter l'enregistrement de manière asynchrone pour éviter les problèmes de timing
             setTimeout(() => {
-              stopRecording();
+              stopAndSendAtMaxDuration();
             }, 0);
-            
-            return maxDuration; // Ne pas dépasser la durée maximale
+            return maxDuration;
           }
           
           return newDuration;
@@ -511,34 +533,6 @@ const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(({
             </div>
           </div>
         )}
-        <button
-          type="button"
-          className="voice-recorder-btn stop"
-          onClick={stopRecording}
-          disabled={false}
-          title={isStopped && !isRecording ? "Reprendre l'enregistrement" : "Arrêter l'enregistrement"}
-        >
-          {isStopped && !isRecording ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" fill="currentColor"/>
-              <path d="M10 8l6 4-6 4V8z" fill="white"/>
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>
-            </svg>
-          )}
-        </button>
-        <button
-          type="button"
-          className="voice-recorder-btn cancel"
-          onClick={cancelRecording}
-          title="Annuler l'enregistrement"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
       </div>
     </div>
   );

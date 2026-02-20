@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, FileAttachment } from '@/hooks/useChat';
 import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
+import VoiceMessagePlayer from '@/components/VoiceMessagePlayer';
 import { IconLock, IconStatusDot, IconAttachment, IconImage, IconVideo, IconMusic, IconSettings, IconTrash } from '@/components/Icons';
 import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
 import { v4 as uuidv4 } from 'uuid';
@@ -39,6 +40,10 @@ function ChatPageContent() {
   const [clickedMessageId, setClickedMessageId] = useState<string | null>(null);
   const [messageMenuPosition, setMessageMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [showGroupSettingsModal, setShowGroupSettingsModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
+  const [videoModal, setVideoModal] = useState<{ url: string; type: string } | null>(null);
+  const [documentModal, setDocumentModal] = useState<{ url: string; name: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageMenuRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -164,7 +169,10 @@ function ChatPageContent() {
     } else {
       if (voiceRecorderRef.current && voiceRecorderRef.current.isRecording) {
         voiceRecorderRef.current.stopAndGetAudio().then((audioBlob) => {
-          if (audioBlob) setRecordedAudioBlob(audioBlob);
+          if (audioBlob) {
+            // Envoyer tout de suite comme sur WhatsApp (relâcher = envoyer)
+            handleVoiceRecordingComplete(audioBlob);
+          }
           setIsRecordingVoice(false);
           setIsHoldingMic(false);
         });
@@ -200,7 +208,16 @@ function ChatPageContent() {
     };
   }, [handleGlobalMove, handleGlobalUp]);
   
-  // Si pas de userId valide, ne pas afficher le chat
+  // Attendre la fin du chargement auth avant d'afficher "Authentification requise" (évite le flash au rafraîchissement)
+  if (authLoading) {
+    return (
+      <main className="chat-main-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0a0e27' }}>
+        <div style={{ textAlign: 'center', color: '#e2e8f0' }}>
+          <p>Chargement...</p>
+        </div>
+      </main>
+    );
+  }
   if (!userId) {
     return (
       <main className="chat-main-container" style={{ padding: 40, color: '#ffffff', textAlign: 'center', background: '#0a0e27' }}>
@@ -326,6 +343,9 @@ function ChatPageContent() {
 
     setUploading(true);
     setIsRecordingVoice(false);
+    setIsHoldingMic(false);
+    setRecordedAudioBlob(null);
+    setShouldCancelRecording(false);
 
     try {
       const messageId = uuidv4();
@@ -338,19 +358,20 @@ function ChatPageContent() {
         size: audioMetadata.size,
       };
 
-      // Envoyer le message avec la note vocale
       await sendMessage(messageInput.trim(), undefined, audioAttachment);
-      
       setMessageInput('');
     } catch (error: any) {
       setBannerMessage({ type: 'error', text: `Erreur lors de l'upload de la note vocale: ${error.message}` });
     } finally {
       setUploading(false);
+      setIsHoldingMic(false);
+      setRecordedAudioBlob(null);
     }
   };
 
   const handleVoiceRecordingStop = (audioBlob: Blob | null) => {
     setRecordedAudioBlob(audioBlob);
+    setIsRecordingVoice(false);
   };
 
   const handleMicButtonDown = (e: React.MouseEvent | React.TouchEvent) => {
@@ -392,11 +413,16 @@ function ChatPageContent() {
   };
 
   const handleDelete = (messageId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce message ?')) {
-      deleteMessage(messageId);
-      setClickedMessageId(null);
-      setMessageMenuPosition(null);
-    }
+    setConfirmModal({
+      title: 'Supprimer le message',
+      message: 'Êtes-vous sûr de vouloir supprimer ce message ?',
+      onConfirm: () => {
+        deleteMessage(messageId);
+        setClickedMessageId(null);
+        setMessageMenuPosition(null);
+        setConfirmModal(null);
+      },
+    });
   };
 
   const openMessageMenu = (messageId: string, x: number, y: number) => {
@@ -582,6 +608,73 @@ function ChatPageContent() {
 
   return (
     <main className="chat-main-container">
+      {/* Modal alerte (erreur / succès) */}
+      {bannerMessage && (
+        <div className="chat-modal-overlay" onClick={() => setBannerMessage(null)} role="dialog" aria-modal="true">
+          <div className={`chat-modal alert-${bannerMessage.type}`} onClick={(e) => e.stopPropagation()}>
+            <div className="chat-modal-header">
+              <h3 className="chat-modal-title">
+                {bannerMessage.type === 'error' ? 'Erreur' : 'Succès'}
+              </h3>
+              <button type="button" className="chat-modal-close" onClick={() => setBannerMessage(null)} aria-label="Fermer">×</button>
+            </div>
+            <div className="chat-modal-body">{bannerMessage.text}</div>
+            <div className="chat-modal-actions">
+              <button type="button" className="chat-modal-btn chat-modal-btn-ok" onClick={() => setBannerMessage(null)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal image (clic sur une image du chat) */}
+      {imageModalUrl && (
+        <div className="chat-image-modal-overlay" onClick={() => setImageModalUrl(null)} role="dialog" aria-modal="true" aria-label="Agrandir l'image">
+          <button type="button" className="chat-image-modal-close" onClick={() => setImageModalUrl(null)} aria-label="Fermer">×</button>
+          <img src={imageModalUrl} alt="" className="chat-image-modal-img" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+      {/* Modal vidéo */}
+      {videoModal && (
+        <div className="chat-image-modal-overlay" onClick={() => setVideoModal(null)} role="dialog" aria-modal="true" aria-label="Agrandir la vidéo">
+          <button type="button" className="chat-image-modal-close" onClick={() => setVideoModal(null)} aria-label="Fermer">×</button>
+          <video
+            src={videoModal.url}
+            controls
+            className="chat-video-modal-player"
+            onClick={(e) => e.stopPropagation()}
+            onEnded={() => {}}
+          >
+            <source src={videoModal.url} type={videoModal.type} />
+          </video>
+        </div>
+      )}
+      {/* Modal document (PDF, etc.) */}
+      {documentModal && (
+        <div className="chat-image-modal-overlay" onClick={() => setDocumentModal(null)} role="dialog" aria-modal="true" aria-label="Afficher le document">
+          <button type="button" className="chat-image-modal-close" onClick={() => setDocumentModal(null)} aria-label="Fermer">×</button>
+          <div className="chat-document-modal-content" onClick={(e) => e.stopPropagation()}>
+            <iframe src={documentModal.url} title={documentModal.name} className="chat-document-modal-iframe" />
+            <a href={documentModal.url} target="_blank" rel="noopener noreferrer" className="chat-document-modal-open-tab" onClick={(e) => e.stopPropagation()}>
+              Ouvrir dans un nouvel onglet
+            </a>
+          </div>
+        </div>
+      )}
+      {/* Modal de confirmation */}
+      {confirmModal && (
+        <div className="chat-modal-overlay" onClick={() => setConfirmModal(null)} role="dialog" aria-modal="true">
+          <div className="chat-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="chat-modal-header">
+              <h3 className="chat-modal-title">{confirmModal.title}</h3>
+              <button type="button" className="chat-modal-close" onClick={() => setConfirmModal(null)} aria-label="Fermer">×</button>
+            </div>
+            <div className="chat-modal-body">{confirmModal.message}</div>
+            <div className="chat-modal-actions">
+              <button type="button" className="chat-modal-btn chat-modal-btn-cancel" onClick={() => setConfirmModal(null)}>Annuler</button>
+              <button type="button" className="chat-modal-btn chat-modal-btn-confirm" onClick={() => confirmModal.onConfirm()}>Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showGroupSettingsModal && isPrivateRoom && isCreator && (
         <div
           className="withdraw-modal-overlay"
@@ -629,11 +722,16 @@ function ChatPageContent() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Retirer ${member.username} du groupe ?`)) {
-                            removeMember(member.userId);
-                            setBannerMessage({ type: 'success', text: `${member.username} a été retiré du groupe.` });
-                            setTimeout(() => setBannerMessage(null), 3000);
-                          }
+                          setConfirmModal({
+                              title: 'Retirer du groupe',
+                              message: `Retirer ${member.username} du groupe ?`,
+                              onConfirm: () => {
+                                removeMember(member.userId);
+                                setBannerMessage({ type: 'success', text: `${member.username} a été retiré du groupe.` });
+                                setConfirmModal(null);
+                                setShowGroupSettingsModal(false);
+                              },
+                            });
                         }}
                         style={{
                           display: 'flex',
@@ -702,33 +800,6 @@ function ChatPageContent() {
             <span className="pinned-label">Message épinglé</span>
             <span className="pinned-preview">—</span>
           </div>
-          {bannerMessage && (
-            <div
-              className="chat-banner-message"
-              style={{
-                padding: '10px 14px',
-                margin: '0 12px 8px',
-                borderRadius: 8,
-                fontSize: 14,
-                background: bannerMessage.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                color: bannerMessage.type === 'error' ? '#ef4444' : '#22c55e',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <span>{bannerMessage.text}</span>
-              <button
-                type="button"
-                onClick={() => setBannerMessage(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'inherit', opacity: 0.8 }}
-                aria-label="Fermer"
-              >
-                ×
-              </button>
-            </div>
-          )}
           <div
             className={`messages ${isScrollingMessages ? 'is-scrolling' : ''}`}
             id="messages"
@@ -857,24 +928,14 @@ function ChatPageContent() {
                             </div>
                           ) : (
                             <>
-                              {/* Note vocale */}
-                              {message.audio && (
-                                <div className="audio-attachment" style={{ 
-                                  marginBottom: '4px'
-                                }}>
-                                  <audio 
-                                    controls 
-                                    style={{ 
-                                      width: '100%',
-                                      maxWidth: '250px',
-                                      height: '32px'
-                                    }}
-                                  >
-                                    <source src={message.audio.url} type={message.audio.type} />
-                                    Votre navigateur ne supporte pas l'élément audio.
-                                  </audio>
-                                </div>
-                              )}
+                              {/* Note vocale — afficher seulement s'il y a un vrai audio et pas uniquement des pièces jointes (évite le lecteur fantôme sur les messages PDF) */}
+                              {message.audio && (!message.attachments || message.attachments.length === 0) && (() => {
+                                const audioUrl = typeof message.audio.url === 'string' ? message.audio.url : '';
+                                const audioType = typeof message.audio.type === 'string' ? message.audio.type : 'audio/webm';
+                                return audioUrl ? (
+                                  <VoiceMessagePlayer url={audioUrl} type={audioType} messageId={message.id} />
+                                ) : null;
+                              })()}
                               
                               {/* Pièces jointes (images, vidéos, fichiers) */}
                               {message.attachments && message.attachments.length > 0 && (
@@ -902,13 +963,13 @@ function ChatPageContent() {
                                               borderRadius: '8px',
                                               cursor: 'pointer',
                                             }}
-                                            onClick={() => window.open(attachment.url, '_blank')}
+                                            onClick={() => setImageModalUrl(attachment.url)}
                                           />
                                         </div>
                                       );
                                     } else if (mediaType === 'video') {
                                       return (
-                                        <div key={idx} style={{ marginBottom: '8px' }}>
+                                        <div key={idx} style={{ marginBottom: '8px', position: 'relative', display: 'inline-block' }}>
                                           <video
                                             controls
                                             style={{
@@ -920,15 +981,46 @@ function ChatPageContent() {
                                             <source src={attachment.url} type={attachment.type} />
                                             Votre navigateur ne supporte pas la vidéo.
                                           </video>
+                                          <button
+                                            type="button"
+                                            onClick={() => setVideoModal({ url: attachment.url, type: attachment.type })}
+                                            className="chat-attachment-expand-btn"
+                                            title="Agrandir"
+                                            aria-label="Agrandir la vidéo"
+                                          >
+                                            ⛶
+                                          </button>
+                                        </div>
+                                      );
+                                    } else if (mediaType === 'audio') {
+                                      return (
+                                        <div key={idx} style={{ marginBottom: '8px' }}>
+                                          <div style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: '6px', color: 'rgba(255,255,255,0.9)' }}>
+                                            Fichier audio
+                                          </div>
+                                          <audio
+                                            controls
+                                            preload="metadata"
+                                            style={{ width: '100%', maxWidth: '280px', height: '36px' }}
+                                            src={attachment.url}
+                                          >
+                                            <source src={attachment.url} type={attachment.type} />
+                                            Votre navigateur ne supporte pas l&apos;audio.
+                                          </audio>
+                                          <div style={{ fontSize: '0.8rem', opacity: 0.75, marginTop: '4px' }}>
+                                            {attachment.name}
+                                            {attachment.size != null && (
+                                              <span> ({(attachment.size / 1024).toFixed(1)} KB)</span>
+                                            )}
+                                          </div>
                                         </div>
                                       );
                                     } else {
                                       return (
                                         <div key={idx} style={{ marginBottom: '4px' }}>
-                                          <a
-                                            href={attachment.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                          <button
+                                            type="button"
+                                            onClick={() => setDocumentModal({ url: attachment.url, name: attachment.name })}
                                             style={{
                                               display: 'inline-flex',
                                               alignItems: 'center',
@@ -937,15 +1029,17 @@ function ChatPageContent() {
                                               background: 'rgba(74, 158, 255, 0.1)',
                                               border: '1px solid rgba(74, 158, 255, 0.3)',
                                               borderRadius: '6px',
-                                              color: '#4a9eff',
+                                              color: '#ffffff',
                                               textDecoration: 'none',
+                                              cursor: 'pointer',
+                                              font: 'inherit',
                                             }}
                                           >
-                                            <IconAttachment size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> {attachment.name}
-                                            <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                                            <IconAttachment size={14} style={{ verticalAlign: 'middle', marginRight: 4, color: '#ffffff' }} /> {attachment.name}
+                                            <span style={{ fontSize: '0.8rem', opacity: 0.85, color: '#ffffff' }}>
                                               ({(attachment.size / 1024).toFixed(1)} KB)
                                             </span>
-                                          </a>
+                                          </button>
                                         </div>
                                       );
                                     }
@@ -961,8 +1055,8 @@ function ChatPageContent() {
                                   )}
                                 </div>
                                 <span className="message-time-inline">
-                                  {message.edited && <span className="message-edited">(modifié) </span>}
-                                  {formatRelativeTime(message.timestamp)}
+                                  <span>{formatRelativeTime(message.timestamp)}</span>
+                                  {message.edited && <span className="message-edited">(modifié)</span>}
                                 </span>
                               </div>
                               
@@ -1272,28 +1366,8 @@ function ChatPageContent() {
             </div>
           )}
           
-          {/* Enregistrement vocal - Positionné en haut à droite */}
-          {(isRecordingVoice || recordedAudioBlob) && (
-            <div style={{ 
-              position: 'fixed',
-              bottom: '80px',
-              right: '20px',
-              zIndex: 1000,
-              maxWidth: '300px',
-              minWidth: '200px'
-            }}>
-              <VoiceRecorder
-                ref={voiceRecorderRef}
-                onRecordingComplete={handleVoiceRecordingComplete}
-                onCancel={handleVoiceRecordingCancel}
-                onStop={handleVoiceRecordingStop}
-                maxDuration={60}
-                autoStart={true}
-              />
-            </div>
-          )}
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Ligne principale : pièce jointe + (saisie ou enregistrement) + mic/send */}
+          <div className="input-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
             {/* Bouton pour sélectionner des fichiers */}
             <button
               type="button"
@@ -1313,19 +1387,46 @@ function ChatPageContent() {
               accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               style={{ display: 'none' }}
             />
+
+            {/* Enregistrement vocal style WhatsApp : inline dans la barre de saisie */}
+            {/* Pendant l'enregistrement : barre style WhatsApp (timer + glisser pour annuler) */}
+            {isRecordingVoice && (
+              <div className="voice-recorder-inline" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                <VoiceRecorder
+                  ref={voiceRecorderRef}
+                  onRecordingComplete={handleVoiceRecordingComplete}
+                  onCancel={handleVoiceRecordingCancel}
+                  onStop={handleVoiceRecordingStop}
+                  maxDuration={60}
+                  autoStart={true}
+                />
+                <span className="voice-recorder-hint" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', marginLeft: '8px', whiteSpace: 'nowrap' }}>
+                  {shouldCancelRecording ? 'Relâchez pour annuler' : 'Glissez vers le haut pour annuler'}
+                </span>
+              </div>
+            )}
+
+            {/* Note vocale prête à envoyer (si enregistrée via le bouton Stop du composant) */}
+            {recordedAudioBlob && !isRecordingVoice && (
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 12 }}>
+                <span style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.9)' }}>Note vocale</span>
+              </div>
+            )}
+
+            {!isRecordingVoice && !recordedAudioBlob && (
+              <input
+                type="text"
+                className="message-input"
+                placeholder={isConnected ? 'Message' : 'Connexion...'}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={!isConnected || uploading}
+                style={{ flex: 1 }}
+              />
+            )}
             
-            <input
-              type="text"
-              className="message-input"
-              placeholder={isConnected ? 'Message' : 'Connexion...'}
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={!isConnected || uploading}
-              style={{ flex: 1 }}
-            />
-            
-            {/* Bouton pour enregistrer une note vocale */}
+            {/* Bouton micro (tenir = enregistrer, glisser vers le haut = annuler, relâcher = envoyer) */}
             {!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob ? (
               <button
                 ref={micButtonRef}
