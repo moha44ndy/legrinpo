@@ -82,14 +82,7 @@ export async function POST(request: NextRequest) {
 
     const userId = (result as any).insertId;
 
-    // Créer le portefeuille pour l'utilisateur
-    await query(
-      `INSERT INTO wallets (user_id, balance, total_earned) 
-       VALUES (?, 0, 0)`,
-      [userId]
-    );
-
-    // Créer le portefeuille dans Firestore avec l'uid comme clé
+    // Créer le portefeuille dans Firestore uniquement (plus de table wallets en SQL)
     if (db) {
       try {
         const walletRef = doc(db, 'wallets', uid);
