@@ -79,7 +79,9 @@ export async function GET() {
       getFirebaseWalletsStats(),
     ]);
 
-    const rooms = roomsFirebase > 0 ? roomsFirebase : roomsSql;
+    // Utiliser Firebase pour le nombre de salons si Admin est configuré, sinon fallback SQL
+    const firestoreConfigured = getAdminFirestore() != null;
+    const rooms = firestoreConfigured ? roomsFirebase : roomsSql;
     const wallets = firebaseWallets.count > 0 ? firebaseWallets.count : (await safeQueryCount('wallets'));
     const totalBalance = firebaseWallets.totalBalance > 0 || firebaseWallets.count > 0
       ? firebaseWallets.totalBalance
