@@ -4,7 +4,7 @@ import { isCurrentUserAdmin, getCurrentAdminUser } from '@/lib/admin-auth';
 import { logAdminAction } from '@/lib/admin-logger';
 
 const DEFAULTS: Record<string, string | boolean> = {
-  siteName: 'Plateforme de Discussion',
+  siteName: 'Legrinpo',
   maintenanceMode: false,
   maintenanceMessage: 'Le site est actuellement en maintenance. Réessayez plus tard.',
   announcementTitle: '',

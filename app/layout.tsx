@@ -7,11 +7,22 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover',
+  themeColor: '#1a237e',
 }
 
 export const metadata: Metadata = {
-  title: 'Plateforme de Discussion - Groupe Politique',
-  description: 'Plateforme de discussion et de coordination en temps réel pour votre groupe politique',
+  title: 'Legrinpo - Discussions',
+  description: 'Plateforme de discussion et de coordination en temps réel - Legrinpo',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Legrinpo',
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+  },
 }
 
 export default function RootLayout({
@@ -21,6 +32,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body>
         <AuthProvider>
           {children}

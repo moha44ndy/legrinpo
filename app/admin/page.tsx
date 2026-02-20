@@ -489,7 +489,7 @@ export default function AdminDashboardPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          siteName: settingsForm.siteName.trim() || 'Plateforme de Discussion',
+          siteName: settingsForm.siteName.trim() || 'Legrinpo',
           maintenanceMode: settingsForm.maintenanceMode,
           maintenanceMessage: settingsForm.maintenanceMessage.trim() || '',
           announcementTitle: settingsForm.announcementTitle.trim(),
@@ -1181,7 +1181,7 @@ export default function AdminDashboardPage() {
                     className="admin-settings-input"
                     value={settingsForm.siteName}
                     onChange={(e) => setSettingsForm((f) => ({ ...f, siteName: e.target.value }))}
-                    placeholder="Plateforme de Discussion"
+                    placeholder="Legrinpo"
                     disabled={settingsSaving}
                   />
                 </label>
