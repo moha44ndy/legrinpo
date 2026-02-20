@@ -18,14 +18,17 @@ function getAdminFirestore(): ReturnType<typeof admin.firestore> | null {
   if (adminDb) return adminDb;
 
   const jsonPathRaw = (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '').trim();
-  const jsonPath = jsonPathRaw.replace(/^["']|["']$/g, '');
+  const jsonPath = jsonPathRaw.replace(/^["']|["']$/g, '').replace(/^\.\//, '');
   if (jsonPath) {
-    const candidates: string[] = path.isAbsolute(jsonPath)
-      ? [path.normalize(jsonPath)]
+    const cwd = process.cwd();
+    const basename = path.basename(jsonPath);
+    const candidates: string[] = path.isAbsolute(jsonPathRaw)
+      ? [path.normalize(jsonPathRaw)]
       : [
-          path.join(process.cwd(), jsonPath),
-          path.join(process.cwd(), path.basename(jsonPath)),
-          path.normalize(jsonPath),
+          path.join(cwd, jsonPath),
+          path.join(cwd, basename),
+          path.resolve(cwd, jsonPath),
+          path.resolve(cwd, basename),
         ];
     for (const resolved of candidates) {
       if (fs.existsSync(resolved)) {
