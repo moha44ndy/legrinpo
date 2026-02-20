@@ -51,9 +51,17 @@ export default function CanalDiscussionPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
+  const [adCanalHtml, setAdCanalHtml] = useState<string>('');
 
   useEffect(() => {
     setHistory(loadHistory());
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/ad/canal')
+      .then((res) => res.json())
+      .then((data) => setAdCanalHtml(data?.adCanalDiscussion ?? ''))
+      .catch(() => setAdCanalHtml(''));
   }, []);
 
   // Obtenir le dernier message depuis Firebase
@@ -609,7 +617,11 @@ export default function CanalDiscussionPage() {
           </div>
         </div>
         <div className="ad-bar">
-          <span className="ad-bar-label">Espace publicitaire</span>
+          {adCanalHtml ? (
+            <div className="ad-bar-content" dangerouslySetInnerHTML={{ __html: adCanalHtml }} />
+          ) : (
+            <span className="ad-bar-label">Espace publicitaire</span>
+          )}
         </div>
       </header>
 

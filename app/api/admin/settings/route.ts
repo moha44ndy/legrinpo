@@ -14,6 +14,7 @@ const DEFAULTS: Record<string, string | boolean> = {
   pageCgu: '',
   pageFaq: '',
   pageAbout: '',
+  adCanalDiscussion: '',
 };
 
 function toBool(v: unknown): boolean {
@@ -44,6 +45,7 @@ export async function GET() {
       pageCgu: (map.pageCgu ?? map.page_cgu ?? '').trim(),
       pageFaq: (map.pageFaq ?? map.page_faq ?? '').trim(),
       pageAbout: (map.pageAbout ?? map.page_about ?? '').trim(),
+      adCanalDiscussion: (map.adCanalDiscussion ?? map.ad_canal_discussion ?? '').trim(),
     };
     return NextResponse.json({ success: true, settings });
   } catch (e: any) {
@@ -81,6 +83,7 @@ export async function PATCH(request: NextRequest) {
     if (body.pageCgu !== undefined) updates.push({ k: 'pageCgu', v: String(body.pageCgu).trim().slice(0, 10000) });
     if (body.pageFaq !== undefined) updates.push({ k: 'pageFaq', v: String(body.pageFaq).trim().slice(0, 10000) });
     if (body.pageAbout !== undefined) updates.push({ k: 'pageAbout', v: String(body.pageAbout).trim().slice(0, 10000) });
+    if (body.adCanalDiscussion !== undefined) updates.push({ k: 'adCanalDiscussion', v: String(body.adCanalDiscussion).trim().slice(0, 15000) });
     if (updates.length === 0) {
       return NextResponse.json({ error: 'Aucune modification fournie' }, { status: 400 });
     }

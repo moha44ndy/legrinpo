@@ -240,6 +240,13 @@
   color: #c5d8f5;
 }
 
+.admin-settings-hint {
+  display: block;
+  font-size: 0.85rem;
+  color: #8b9dc3;
+  margin-top: 0.35rem;
+}
+
 /* ---------- Utilisateurs : toolbar & recherche ---------- */
 .admin-users-toolbar {
   display: flex;

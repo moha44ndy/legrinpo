@@ -122,6 +122,18 @@
     color: rgba(255, 255, 255, 0.6);
 }
 
+.ad-bar-content {
+    width: 100%;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ad-bar-content ins.adsbygoogle {
+    display: block;
+}
+
 /* Chat Filters */
 .chat-filters {
     display: flex;

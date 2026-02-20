@@ -52,6 +52,7 @@ interface SiteSettings {
   pageCgu: string;
   pageFaq: string;
   pageAbout: string;
+  adCanalDiscussion: string;
 }
 
 interface AnalyticsData {
@@ -117,6 +118,7 @@ export default function AdminDashboardPage() {
     pageCgu: '',
     pageFaq: '',
     pageAbout: '',
+    adCanalDiscussion: '',
   });
   const [userSearch, setUserSearch] = useState('');
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
@@ -226,6 +228,7 @@ export default function AdminDashboardPage() {
           pageCgu: s.pageCgu ?? '',
           pageFaq: s.pageFaq ?? '',
           pageAbout: s.pageAbout ?? '',
+          adCanalDiscussion: s.adCanalDiscussion ?? '',
         });
       }
     } catch (e) {
@@ -496,6 +499,7 @@ export default function AdminDashboardPage() {
           pageCgu: settingsForm.pageCgu.trim(),
           pageFaq: settingsForm.pageFaq.trim(),
           pageAbout: settingsForm.pageAbout.trim(),
+          adCanalDiscussion: settingsForm.adCanalDiscussion.trim(),
         }),
       });
       const data = await res.json();
@@ -1225,6 +1229,20 @@ export default function AdminDashboardPage() {
                 <textarea className="admin-settings-input admin-settings-textarea" value={settingsForm.pageFaq} onChange={(e) => setSettingsForm((f) => ({ ...f, pageFaq: e.target.value }))} rows={4} placeholder="Foire aux questions..." disabled={settingsSaving} />
                 <label className="admin-settings-label">À propos</label>
                 <textarea className="admin-settings-input admin-settings-textarea" value={settingsForm.pageAbout} onChange={(e) => setSettingsForm((f) => ({ ...f, pageAbout: e.target.value }))} rows={4} placeholder="À propos du site..." disabled={settingsSaving} />
+                <h3 className="admin-subsection-title">Pub AdMob – Canal de discussion</h3>
+                <label className="admin-settings-label">
+                  Code de la pub (div fourni par AdMob)
+                  <textarea
+                    className="admin-settings-input admin-settings-textarea"
+                    value={settingsForm.adCanalDiscussion}
+                    onChange={(e) => setSettingsForm((f) => ({ ...f, adCanalDiscussion: e.target.value }))}
+                    rows={6}
+                    placeholder='Collez ici le code fourni par AdMob (ex. <ins class="adsbygoogle" ...></ins>)'
+                    disabled={settingsSaving}
+                    spellCheck={false}
+                  />
+                  <span className="admin-settings-hint">Ce contenu sera affiché dans l’espace publicitaire en haut de la page Canal de discussion.</span>
+                </label>
                 <button
                   type="submit"
                   className="admin-btn admin-btn-save"
