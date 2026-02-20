@@ -17,6 +17,7 @@ function ChatPageContent() {
   const { user, userProfile, loading: authLoading, logout } = useAuth();
   const roomId = searchParams.get('room');
   const roomPassword = searchParams.get('password') || undefined;
+  const roomNameFromUrl = searchParams.get('roomName') || undefined;
 
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user (priorité à uid pour la persistance du wallet)
@@ -51,17 +52,7 @@ function ChatPageContent() {
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
   
-  // Noms pour les descriptions (sous le header)
-  const getPublicRoomName = (roomId: string | null) => {
-    if (!roomId) return 'Discussion';
-    const roomNames: { [key: string]: string } = {
-      'public_aes': 'AES',
-      'public_cemac': 'CEMAC',
-      'public_uemoa': 'UEMOA',
-      'public_autres': 'Globale Organisation'
-    };
-    return roomNames[roomId] || 'Discussion';
-  };
+  const getRoomDisplayName = () => roomNameFromUrl || 'Discussion';
 
   // useChat doit être appelé avant tout return conditionnel
   const {
@@ -586,7 +577,7 @@ function ChatPageContent() {
     );
   }
 
-  const chatTitle = isPublicRoom ? getPublicRoomName(roomId) : 'Discussion privée';
+  const chatTitle = isPublicRoom ? getRoomDisplayName() : 'Discussion privée';
   const chatSubtitle = members.length > 0 ? `${members.length} membre${members.length > 1 ? 's' : ''}` : '';
 
   return (

@@ -5,13 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
 import Wallet from '@/components/Wallet';
-import { IconGlobe, IconAes, IconCemac, IconUemoa, IconHandshake, IconBriefcase, IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
+import { IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import '../globals.css';
 import './canaldiscussion-wa.css';
-
-type PublicIconKey = 'globe' | 'aes' | 'cemac' | 'uemoa' | 'handshake' | 'briefcase' | 'globeAlt';
 
 interface ChatItem {
   id: string;
@@ -24,7 +22,6 @@ interface ChatItem {
   room: RoomHistoryItem;
   isUnread?: boolean;
   isFavorite?: boolean;
-  iconKey?: PublicIconKey;
 }
 
 export default function CanalDiscussionPage() {
@@ -155,30 +152,30 @@ export default function CanalDiscussionPage() {
       };
 
       // Salons publics : uniquement ceux présents dans Firebase (ajoutés par l'admin)
-      let publicRooms: { id: string; name: string; description: string; iconKey?: PublicIconKey }[] = [];
+      let publicRooms: { id: string; name: string; description: string; createdAt: number }[] = [];
       if (db) {
         try {
           const roomsRef = collection(db, 'rooms');
           const q = query(roomsRef, where('type', '==', 'public'));
           const snapshot = await getDocs(q);
-          const iconByRoomId: Record<string, PublicIconKey> = {
-            public_aes: 'aes',
-            public_cemac: 'cemac',
-            public_uemoa: 'uemoa',
-            public_autres: 'globeAlt',
-            public_global_organisation: 'globeAlt'
-          };
           publicRooms = snapshot.docs
             .map((doc) => {
               const d = doc.data();
+              const raw = d.createdAt;
+              const createdAt =
+                raw && typeof raw === 'object' && typeof (raw as { toMillis?: () => number }).toMillis === 'function'
+                  ? (raw as { toMillis: () => number }).toMillis()
+                  : raw != null
+                    ? new Date(raw as string | number).getTime()
+                    : 0;
               return {
                 id: doc.id,
                 name: (d.name as string) || doc.id,
                 description: (d.description as string) || '',
-                iconKey: iconByRoomId[doc.id]
+                createdAt,
               };
             })
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            .sort((a, b) => a.createdAt - b.createdAt);
         } catch (err) {
           console.error('Erreur chargement salons publics Firebase:', err);
         }
@@ -194,7 +191,6 @@ export default function CanalDiscussionPage() {
           lastMessage: lastMessage,
           timestamp: new Date().toISOString(),
           avatar: { char: (publicRoom.name || '?').charAt(0), color: '#d32f2f' },
-          iconKey: publicRoom.iconKey,
           room: {
             id: publicRoom.id,
             name: publicRoom.name,
@@ -418,35 +414,6 @@ export default function CanalDiscussionPage() {
     setRoomPassword('');
   };
 
-  const handleJoinPublic = (roomType: string = 'aes') => {
-    const publicRooms: { [key: string]: { id: string; name: string } } = {
-      aes: { id: 'public_aes', name: 'AES' },
-      cemac: { id: 'public_cemac', name: 'CEMAC' },
-      uemoa: { id: 'public_uemoa', name: 'UEMOA' },
-      autres: { id: 'public_global_organisation', name: 'Global Organisation' }
-    };
-
-    const room = publicRooms[roomType] || publicRooms.aes;
-    const roomId = room.id;
-    
-    const item: RoomHistoryItem = {
-      id: roomId,
-      name: `Discussion Publique - ${room.name}`,
-      password: null,
-      type: 'public',
-      joinedAt: new Date().toISOString(),
-    };
-
-    const next: RoomHistory = {
-      ...history,
-      joined: [item, ...history.joined.filter((r) => r.id !== roomId)],
-    };
-    saveHistory(next);
-    setHistory(next);
-
-    router.push(`/chat?room=${roomId}`);
-  };
-
   const handleJoinByLink = () => {
     const link = linkInput.trim();
     if (!link) return;
@@ -529,11 +496,10 @@ export default function CanalDiscussionPage() {
       [chat.id]: Date.now()
     }));
     
-    router.push(
-      `/chat?room=${encodeURIComponent(chat.room.id)}${
-        chat.room.password ? `&password=${encodeURIComponent(chat.room.password)}` : ''
-      }`
-    );
+    const params = new URLSearchParams({ room: chat.room.id });
+    if (chat.room.password) params.set('password', chat.room.password);
+    if (chat.room.name) params.set('roomName', chat.room.name);
+    router.push(`/chat?${params.toString()}`);
   };
 
   const toggleFavorite = (chatId: string, e: React.MouseEvent) => {
@@ -653,21 +619,17 @@ export default function CanalDiscussionPage() {
           <div className="public-room-grid">
             {allChats
               .filter(chat => chat.id.startsWith('public_'))
-              .map((chat) => {
-                const iconKey = chat.iconKey || 'globeAlt';
-                const PublicIcon = iconKey === 'aes' ? IconAes : iconKey === 'cemac' ? IconCemac : iconKey === 'uemoa' ? IconUemoa : iconKey === 'globe' ? IconGlobe : iconKey === 'handshake' ? IconHandshake : iconKey === 'briefcase' ? IconBriefcase : IconGlobeAlt;
-                return (
-                  <button
-                    key={chat.id}
-                    className="public-room-btn"
-                    onClick={() => handleRejoinRoom(chat)}
-                  >
-                    <span><PublicIcon size={24} /></span>
-                    <span>{chat.room.name || chat.name}</span>
-                    <small>{chat.room.description || ''}</small>
-                  </button>
-                );
-              })}
+              .map((chat) => (
+                <button
+                  key={chat.id}
+                  className="public-room-btn"
+                  onClick={() => handleRejoinRoom(chat)}
+                >
+                  <span><IconGlobeAlt size={24} /></span>
+                  <span>{chat.room.name || chat.name}</span>
+                  <small>{chat.room.description || ''}</small>
+                </button>
+              ))}
           </div>
         </div>
       )}
