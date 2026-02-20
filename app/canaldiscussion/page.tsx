@@ -165,7 +165,8 @@ export default function CanalDiscussionPage() {
             public_aes: 'aes',
             public_cemac: 'cemac',
             public_uemoa: 'uemoa',
-            public_autres: 'globeAlt'
+            public_autres: 'globeAlt',
+            public_global_organisation: 'globeAlt'
           };
           publicRooms = snapshot.docs
             .map((doc) => {
@@ -422,7 +423,7 @@ export default function CanalDiscussionPage() {
       aes: { id: 'public_aes', name: 'AES' },
       cemac: { id: 'public_cemac', name: 'CEMAC' },
       uemoa: { id: 'public_uemoa', name: 'UEMOA' },
-      autres: { id: 'public_autres', name: 'Globale Organisation' }
+      autres: { id: 'public_global_organisation', name: 'Global Organisation' }
     };
 
     const room = publicRooms[roomType] || publicRooms.aes;

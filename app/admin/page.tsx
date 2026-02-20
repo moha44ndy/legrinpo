@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
   const [editForm, setEditForm] = useState({ username: '', isDisabled: false });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [roomFormAdd, setRoomFormAdd] = useState({ roomId: '', name: '', description: '' });
+  const [roomFormAdd, setRoomFormAdd] = useState({ name: '', description: '' });
   const [addRoomSaving, setAddRoomSaving] = useState(false);
   const [editRoom, setEditRoom] = useState<AdminRoom | null>(null);
   const [editRoomForm, setEditRoomForm] = useState({ name: '', description: '' });
@@ -400,12 +400,13 @@ export default function AdminDashboardPage() {
   }, [editUser, editForm, user]);
 
   const createRoom = useCallback(async () => {
-    const roomId = roomFormAdd.roomId.trim().replace(/[^a-z0-9_-]/gi, '_');
     const name = roomFormAdd.name.trim();
-    if (!roomId || !name) {
-      setRoomsError('Identifiant et nom du salon sont requis.');
+    if (!name) {
+      setRoomsError('Le nom du salon est requis.');
       return;
     }
+    // Identifiant généré : public_nomdusalon (slug à partir du nom)
+    const roomId = 'public_' + name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '_');
     setAddRoomSaving(true);
     setRoomsError(null);
     try {
@@ -421,7 +422,7 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
       setRooms((prev) => [...prev, data.room].filter(Boolean));
-      setRoomFormAdd({ roomId: '', name: '', description: '' });
+      setRoomFormAdd({ name: '', description: '' });
       setShowAddRoom(false);
     } catch (e: any) {
       setRoomsError(e?.message || 'Erreur création');
@@ -858,18 +859,7 @@ export default function AdminDashboardPage() {
                 onSubmit={(e) => { e.preventDefault(); createRoom(); }}
               >
                 <label className="admin-settings-label">
-                  Identifiant du salon (lettres, chiffres, tirets)
-                  <input
-                    type="text"
-                    className="admin-settings-input"
-                    value={roomFormAdd.roomId}
-                    onChange={(e) => setRoomFormAdd((f) => ({ ...f, roomId: e.target.value }))}
-                    placeholder="ex: public_mon_salon"
-                    disabled={addRoomSaving}
-                  />
-                </label>
-                <label className="admin-settings-label">
-                  Nom affiché
+                  Nom du salon
                   <input
                     type="text"
                     className="admin-settings-input"
