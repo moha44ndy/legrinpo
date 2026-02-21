@@ -21,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  loginWithCode: (email: string, code: string) => Promise<{ mustSetPassword: boolean }>;
   logout: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
@@ -125,6 +126,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithCode = async (email: string, code: string): Promise<{ mustSetPassword: boolean }> => {
+    const response = await fetch('/api/auth/login-with-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      const err = new Error(data.error || 'Erreur lors de la connexion');
+      (err as any).code = 'auth/code-login-failed';
+      throw err;
+    }
+    if (data.success && data.user) {
+      setUser(data.user);
+      setUserProfile(data.user);
+    }
+    return { mustSetPassword: !!data.mustSetPassword };
+  };
+
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -193,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signUp, login, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, signUp, login, loginWithCode, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

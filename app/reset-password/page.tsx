@@ -10,8 +10,9 @@ import './reset-password.css';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
-  const tokenFromUrl = searchParams.get('token') || '';
-  const [token, setToken] = useState('');
+  const emailFromUrl = searchParams.get('email') || '';
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,8 +20,8 @@ function ResetPasswordContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setToken(tokenFromUrl);
-  }, [tokenFromUrl]);
+    setEmail(emailFromUrl);
+  }, [emailFromUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +34,12 @@ function ResetPasswordContent() {
       setError('Le mot de passe doit contenir au moins 6 caractères.');
       return;
     }
-    if (!token) {
-      setError('Lien invalide. Utilisez le lien reçu par email.');
+    if (!email.trim()) {
+      setError('Email requis.');
+      return;
+    }
+    if (!code.trim()) {
+      setError('Code requis. Utilisez le code reçu par email (page Mot de passe oublié).');
       return;
     }
     setLoading(true);
@@ -42,7 +47,7 @@ function ResetPasswordContent() {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword: password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim(), newPassword: password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -57,42 +62,48 @@ function ResetPasswordContent() {
     }
   };
 
-  if (!tokenFromUrl) {
-    return (
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Réinitialisation</h1>
-            <p>Lien invalide ou manquant. Demandez un nouveau lien depuis la page « Mot de passe oublié ».</p>
-          </div>
-          <div className="auth-footer">
-            <Link href="/forgot-password" className="auth-link">Mot de passe oublié</Link>
-            <span className="auth-sep">|</span>
-            <Link href="/login" className="auth-link">Connexion</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
           <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Nouveau mot de passe</h1>
-          <p>Choisissez un nouveau mot de passe (au moins 6 caractères)</p>
+          <p>Entrez votre email, le code reçu par email (mot de passe oublié) et choisissez un nouveau mot de passe (au moins 6 caractères).</p>
         </div>
 
         {done ? (
           <div className="forgot-done">
             <p className="forgot-done-text">Votre mot de passe a été mis à jour. Vous pouvez vous connecter.</p>
-            <Link href="/login" className="auth-button auth-button-block">
-              Se connecter
-            </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="auth-form">
             {error && <div className="auth-error">{error}</div>}
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="votre@email.com"
+                required
+                disabled={loading}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="code">Code reçu par email</label>
+              <input
+                id="code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                maxLength={6}
+                disabled={loading}
+                className="auth-code-input"
+              />
+            </div>
             <div className="form-group">
               <label htmlFor="password">Nouveau mot de passe</label>
               <input
@@ -127,7 +138,15 @@ function ResetPasswordContent() {
 
         <div className="auth-footer">
           <p>
-            <Link href="/login" className="auth-link">Retour à la connexion</Link>
+            {done ? (
+              <Link href="/login" className="auth-link">Connexion</Link>
+            ) : (
+              <>
+                <Link href="/forgot-password" className="auth-link">Mot de passe oublié</Link>
+                <span className="auth-sep">|</span>
+                <Link href="/login" className="auth-link">Connexion</Link>
+              </>
+            )}
           </p>
         </div>
       </div>

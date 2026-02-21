@@ -153,3 +153,40 @@
     text-decoration: underline;
 }
 
+.auth-code-message {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    background: rgba(74, 158, 255, 0.1);
+    border-radius: 8px;
+}
+
+.auth-input-readonly {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-code-input {
+    text-align: center;
+    letter-spacing: 0.3em;
+    font-size: 1.25rem;
+}
+
+.auth-switch-wrap {
+    margin: 12px 0 0;
+    text-align: center;
+}
+
+.auth-link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.auth-link-button:hover {
+    text-decoration: underline;
+}
+

@@ -488,6 +488,43 @@
   cursor: not-allowed;
 }
 
+.wallet-settings-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: inherit;
+  text-align: center;
+}
+.wallet-settings-btn:hover {
+  background: rgba(74, 158, 255, 0.15);
+  border-color: rgba(74, 158, 255, 0.4);
+}
+
+.wallet-settings-content {
+  padding: 16px;
+}
+.wallet-settings-link {
+  display: block;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
+}
+.wallet-settings-link:hover {
+  background: rgba(74, 158, 255, 0.12);
+  border-color: rgba(74, 158, 255, 0.4);
+  color: #fff;
+}
+
 .wallet-help-btn {
   width: 100%;
   margin-top: 8px;
@@ -624,7 +661,8 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
-.help-modal-icon {
+.help-modal-icon,
+.settings-modal-icon {
   width: 40px;
   height: 40px;
   display: flex;
@@ -923,6 +961,7 @@
   }
 
   .wallet-refresh-btn,
+  .wallet-settings-btn,
   .wallet-help-btn,
   .wallet-admin-btn,
   .wallet-withdraw-btn,

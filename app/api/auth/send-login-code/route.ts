@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import nodemailer from 'nodemailer';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -15,6 +17,14 @@ function generateCode(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimit = checkRateLimit(request, 'auth:send-login-code', { windowMs: 60 * 1000, max: 5 });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Trop de tentatives. Réessayez dans une minute.' },
+      { status: 429, headers: rateLimit.retryAfterMs ? { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } : {} }
+    );
+  }
+
   try {
     const body = await request.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
@@ -27,25 +37,28 @@ export async function POST(request: NextRequest) {
     }
 
     const users = await query('SELECT id, email FROM users WHERE email = ?', [email]);
-    const userExists = Array.isArray(users) && users.length > 0;
-
-    const successMessage = 'Si un compte existe avec cette adresse, vous recevrez un code par email pour réinitialiser votre mot de passe.';
-
-    if (!userExists) {
-      return NextResponse.json({ success: true, message: successMessage });
+    if (!Array.isArray(users) || users.length === 0) {
+      return NextResponse.json(
+        { error: 'Aucun compte avec cette adresse email.' },
+        { status: 404 }
+      );
     }
 
     const code = generateCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
 
-    const { supabaseAdmin } = await import('@/lib/supabase');
     if (supabaseAdmin) {
-      await supabaseAdmin.from('password_reset_tokens').delete().eq('email', email);
-      await supabaseAdmin.from('password_reset_tokens').insert({
+      await supabaseAdmin.from('login_codes').delete().eq('email', email);
+      await supabaseAdmin.from('login_codes').insert({
         email,
-        token: code,
+        code,
         expires_at: expiresAt.toISOString(),
       });
+    } else {
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante' },
+        { status: 500 }
+      );
     }
 
     if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
@@ -59,15 +72,18 @@ export async function POST(request: NextRequest) {
       await transporter.sendMail({
         from: SMTP_FROM,
         to: email,
-        subject: 'Code pour réinitialiser votre mot de passe',
-        text: `Bonjour,\n\nVotre code de réinitialisation est : ${code}\n\nIl est valable ${CODE_EXPIRY_MINUTES} minutes. Entrez ce code sur la page de réinitialisation avec votre email et votre nouveau mot de passe.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.`,
-        html: `<p>Bonjour,</p><p>Votre code de réinitialisation est : <strong>${code}</strong></p><p>Il est valable ${CODE_EXPIRY_MINUTES} minutes. Entrez ce code sur la page de réinitialisation avec votre email et votre nouveau mot de passe.</p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`,
+        subject: 'Votre code de connexion',
+        text: `Bonjour,\n\nVotre code de connexion est : ${code}\n\nIl est valable ${CODE_EXPIRY_MINUTES} minutes. Ne le partagez avec personne.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email.`,
+        html: `<p>Bonjour,</p><p>Votre code de connexion est : <strong>${code}</strong></p><p>Il est valable ${CODE_EXPIRY_MINUTES} minutes. Ne le partagez avec personne.</p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`,
       });
     }
 
-    return NextResponse.json({ success: true, message: successMessage });
+    return NextResponse.json({
+      success: true,
+      message: `Un code de connexion a été envoyé à ${email}. Il est valable ${CODE_EXPIRY_MINUTES} minutes.`,
+    });
   } catch (err: unknown) {
-    console.error('Forgot password:', err);
+    console.error('Send login code:', err);
     return NextResponse.json(
       { error: 'Une erreur est survenue. Réessayez plus tard.' },
       { status: 500 }

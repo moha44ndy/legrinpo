@@ -31,6 +31,16 @@ CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
   created_at timestamp with time zone DEFAULT now()
 );
 
+-- Codes de connexion par email (valables 15 min)
+CREATE TABLE IF NOT EXISTS public.login_codes (
+  id BIGSERIAL PRIMARY KEY,
+  email text NOT NULL,
+  code character varying(10) NOT NULL,
+  expires_at timestamp with time zone NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS login_codes_email_expires_idx ON public.login_codes (email, expires_at);
+
 -- Logs de connexion (optionnel)
 CREATE TABLE IF NOT EXISTS public.login_logs (
   id BIGSERIAL PRIMARY KEY,

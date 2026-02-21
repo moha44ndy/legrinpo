@@ -26,7 +26,6 @@ export default function LoginPage() {
       router.push('/canaldiscussion');
     } catch (error: any) {
       let errorMessage = 'Erreur lors de la connexion';
-      
       switch (error.code) {
         case 'auth/user-not-found':
           errorMessage = 'Aucun compte trouvé avec cet email';
@@ -43,17 +42,9 @@ export default function LoginPage() {
         case 'auth/too-many-requests':
           errorMessage = 'Trop de tentatives. Réessayez plus tard';
           break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'L\'authentification par email/mot de passe n\'est pas activée dans Firebase. Veuillez l\'activer dans la console Firebase.';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet.';
-          break;
         default:
-          errorMessage = error.message || 'Erreur lors de la connexion';
-          console.error('Erreur de connexion complète:', error);
+          errorMessage = error.message || errorMessage;
       }
-      
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -69,20 +60,17 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="auth-error">
-              {error}
-            </div>
-          )}
+          {error && <div className="auth-error">{error}</div>}
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email ou nom d&apos;utilisateur</label>
             <input
               id="email"
-              type="email"
+              type="text"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="votre@email.com"
+              placeholder="email ou pseudo"
               required
               disabled={loading}
             />
@@ -104,11 +92,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <button 
-            type="submit" 
-            className="auth-button"
-            disabled={loading}
-          >
+          <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
@@ -116,13 +100,10 @@ export default function LoginPage() {
         <div className="auth-footer">
           <p>
             Pas encore de compte ?{' '}
-            <a href="/register" className="auth-link">
-              S'inscrire
-            </a>
+            <Link href="/register" className="auth-link">S&apos;inscrire</Link>
           </p>
         </div>
       </div>
     </div>
   );
 }
-

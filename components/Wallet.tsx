@@ -75,6 +75,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [helpSubmitting, setHelpSubmitting] = useState(false);
   const [helpError, setHelpError] = useState<string | null>(null);
   const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
@@ -305,6 +306,16 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           </button>
           <button
             type="button"
+            className="wallet-settings-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              requestAnimationFrame(() => setShowSettingsModal(true));
+            }}
+          >
+            Paramètres
+          </button>
+          <button
+            type="button"
             className="wallet-help-btn"
             onClick={(e) => {
               e.stopPropagation();
@@ -517,6 +528,39 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {showSettingsModal && (
+        <div
+          className="withdraw-modal-overlay"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div className="withdraw-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="withdraw-modal-header">
+              <div className="withdraw-modal-header-inner">
+                <span className="withdraw-modal-icon settings-modal-icon" aria-hidden="true">⚙</span>
+                <h3 className="withdraw-modal-title">Paramètres</h3>
+              </div>
+              <button
+                type="button"
+                className="withdraw-modal-close"
+                onClick={() => setShowSettingsModal(false)}
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+            <div className="wallet-settings-content">
+              <Link
+                href="/change-password"
+                className="wallet-settings-link"
+                onClick={() => { setShowSettingsModal(false); setIsExpanded(false); }}
+              >
+                Changer mon mot de passe
+              </Link>
+            </div>
           </div>
         </div>
       )}

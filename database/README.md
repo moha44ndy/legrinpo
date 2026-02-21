@@ -17,5 +17,6 @@ SUPABASE_SERVICE_ROLE_KEY=...
 Les tables sont gérées dans Supabase (Dashboard → Table Editor ou SQL Editor).
 
 - **password_reset_tokens** : exécuter le script `supabase-password-reset-tokens.sql` dans le SQL Editor Supabase si besoin.
+- **login_codes** : table pour les codes de connexion par email (définie dans `supabase-create-tables.sql`). À créer si vous ajoutez la connexion par code.
 
 Les autres tables (users, wallets, withdrawal_requests, etc.) sont créées via le Dashboard Supabase ou vos migrations.

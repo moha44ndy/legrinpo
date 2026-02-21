@@ -5,12 +5,19 @@ import { supabaseAdmin } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const token = typeof body.token === 'string' ? body.token.trim() : '';
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const code = typeof body.code === 'string' ? body.code.trim().replace(/\s/g, '') : '';
     const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
 
-    if (!token) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'Lien invalide ou expiré' },
+        { error: 'Email requis' },
+        { status: 400 }
+      );
+    }
+    if (!code) {
+      return NextResponse.json(
+        { error: 'Code requis. Vérifiez l\'email reçu (mot de passe oublié).' },
         { status: 400 }
       );
     }
@@ -31,15 +38,16 @@ export async function POST(request: NextRequest) {
     const { data: rows } = await supabaseAdmin
       .from('password_reset_tokens')
       .select('email')
-      .eq('token', token)
+      .eq('email', email)
+      .eq('token', code)
       .gt('expires_at', new Date().toISOString())
       .limit(1);
 
-    const email = rows?.[0] ? (rows[0] as { email: string }).email : null;
+    const found = rows?.[0] ? (rows[0] as { email: string }).email : null;
 
-    if (!email) {
+    if (!found) {
       return NextResponse.json(
-        { error: 'Lien invalide ou expiré. Demandez un nouveau lien de réinitialisation.' },
+        { error: 'Code invalide ou expiré. Demandez un nouveau code depuis « Mot de passe oublié ».' },
         { status: 400 }
       );
     }
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    await supabaseAdmin.from('password_reset_tokens').delete().eq('token', token);
+    await supabaseAdmin.from('password_reset_tokens').delete().eq('email', email).eq('token', code);
 
     return NextResponse.json({
       success: true,
