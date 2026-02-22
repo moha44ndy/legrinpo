@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : '';
-    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword.trim() : '';
+    const newPassword = typeof body.newPassword === 'string' ? body.newPassword.trim() : '';
 
     if (!currentPassword) {
       return NextResponse.json(
@@ -76,10 +76,20 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     const updatedAt = new Date().toISOString();
-    await query(
+    // Utiliser le même id que pour le SELECT (coercion nombre pour Supabase/Postgres)
+    const idForUpdate = typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10);
+    const updateResult = await query(
       'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?',
-      [passwordHash, updatedAt, user.id]
+      [passwordHash, updatedAt, idForUpdate]
     );
+
+    // Vérifier qu'une ligne a bien été mise à jour (Supabase retourne les lignes modifiées)
+    if (Array.isArray(updateResult) && updateResult.length === 0) {
+      return NextResponse.json(
+        { error: 'Échec de la mise à jour du mot de passe. Réessayez ou contactez le support.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (e: any) {

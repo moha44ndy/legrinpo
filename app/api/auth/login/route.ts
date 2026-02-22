@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
     const loginInput = typeof email === 'string' ? email.trim() : '';
+    const passwordToCheck = typeof password === 'string' ? password.trim() : '';
 
     // Validations
-    if (!loginInput || !password) {
+    if (!loginInput || !passwordToCheck) {
       return NextResponse.json(
         { error: 'Email/nom d\'utilisateur et mot de passe sont requis' },
         { status: 400 }
@@ -51,8 +52,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier le mot de passe
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    // Vérifier le mot de passe (même normalisation qu'au changement de mot de passe)
+    const passwordMatch = await bcrypt.compare(passwordToCheck, user.password_hash);
 
     if (!passwordMatch) {
       return NextResponse.json(

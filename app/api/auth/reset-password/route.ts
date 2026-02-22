@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const code = typeof body.code === 'string' ? body.code.trim().replace(/\s/g, '') : '';
-    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+    const newPassword = typeof body.newPassword === 'string' ? body.newPassword.trim() : '';
 
     if (!email) {
       return NextResponse.json(
@@ -54,15 +54,22 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    const { error: updateError } = await supabaseAdmin
+    const { data: updatedRows, error: updateError } = await supabaseAdmin
       .from('users')
       .update({ password_hash: passwordHash })
-      .eq('email', email);
+      .eq('email', email)
+      .select('id');
     if (updateError) {
       console.error('Reset password update:', updateError);
       return NextResponse.json(
         { error: 'Erreur lors de la mise à jour du mot de passe' },
         { status: 500 }
+      );
+    }
+    if (!updatedRows?.length) {
+      return NextResponse.json(
+        { error: 'Compte introuvable pour cet email. Vérifiez l\'adresse ou réessayez.' },
+        { status: 400 }
       );
     }
     await supabaseAdmin.from('password_reset_tokens').delete().eq('email', email).eq('token', code);
