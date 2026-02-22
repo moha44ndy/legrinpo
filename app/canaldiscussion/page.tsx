@@ -54,26 +54,22 @@ export default function CanalDiscussionPage() {
       });
   }, []);
 
-  // Logique d'injection de la pub (réutilisable au montage du div et toutes les 30 s)
+  // Sandbox des iframes pub : empêche la redirection de la page (top.location) par le contenu des iframes
+  const sandboxAdIframes = useCallback((container: HTMLDivElement) => {
+    container.querySelectorAll('iframe').forEach((iframe) => {
+      iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+      // Pas de allow-top-navigation : le contenu de l'iframe ne peut pas changer l'URL de votre site
+    });
+  }, []);
+
+  // Injection de la pub : HTML uniquement, sans exécuter les scripts ; iframes sandboxées
   const runAdInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalHtml.trim()) return;
     container.innerHTML = adCanalHtml;
-    const scripts = Array.from(container.querySelectorAll('script'));
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement('script');
-      if (oldScript.src) {
-        newScript.src = oldScript.src;
-      } else {
-        newScript.textContent = oldScript.textContent || '';
-      }
-      if (oldScript.async) newScript.async = true;
-      if (oldScript.defer) newScript.defer = true;
-      container.appendChild(newScript);
-    });
-    scripts.forEach((s) => s.remove());
-  }, [adCanalHtml]);
+    sandboxAdIframes(container);
+  }, [adCanalHtml, sandboxAdIframes]);
 
-  // Callback ref : injecter dès que le conteneur pub est monté (fixe le cas "retour d'un salon")
+  // Callback ref : injecter une seule fois quand le conteneur pub est monté
   const setAdBarRef = useCallback((el: HTMLDivElement | null) => {
     (adBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
     if (el && adCanalHtml.trim() && !el.querySelector('iframe')) {
@@ -81,36 +77,12 @@ export default function CanalDiscussionPage() {
     }
   }, [adCanalHtml, runAdInjection]);
 
-  // Actualisation de la pub toutes les 30 s
-  useEffect(() => {
-    if (!adCanalHtml.trim()) return;
-    const intervalMs = 30_000;
-    const tid = setInterval(() => {
-      if (!adBarRef.current) return;
-      adBarRef.current.innerHTML = '';
-      runAdInjection(adBarRef.current);
-    }, intervalMs);
-    return () => clearInterval(tid);
-  }, [adCanalHtml, runAdInjection]);
-
-  // Pub native (Native Banner) : même logique que la bannière du haut (innerHTML + recréation des scripts)
+  // Pub native : HTML uniquement, sans exécuter les scripts ; iframes sandboxées
   const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalNativeHtml.trim()) return;
     container.innerHTML = adCanalNativeHtml;
-    const scripts = Array.from(container.querySelectorAll('script'));
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement('script');
-      if (oldScript.src) {
-        newScript.src = oldScript.src;
-      } else {
-        newScript.textContent = oldScript.textContent || '';
-      }
-      if (oldScript.async) newScript.async = true;
-      if (oldScript.defer) newScript.defer = true;
-      container.appendChild(newScript);
-    });
-    scripts.forEach((s) => s.remove());
-  }, [adCanalNativeHtml]);
+    sandboxAdIframes(container);
+  }, [adCanalNativeHtml, sandboxAdIframes]);
 
   const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
     (adNativeBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;

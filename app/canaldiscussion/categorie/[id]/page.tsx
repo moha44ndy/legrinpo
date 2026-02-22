@@ -45,23 +45,19 @@ export default function CanalCategoriePage() {
       .catch(() => setAdCanalHtml(''));
   }, []);
 
+  // Sandbox des iframes pub : empêche la redirection de la page (top.location) par le contenu des iframes
+  const sandboxAdIframes = useCallback((container: HTMLDivElement) => {
+    container.querySelectorAll('iframe').forEach((iframe) => {
+      iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+    });
+  }, []);
+
+  // Injection de la pub : HTML uniquement, sans exécuter les scripts ; iframes sandboxées
   const runAdInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalHtml.trim()) return;
     container.innerHTML = adCanalHtml;
-    const scripts = Array.from(container.querySelectorAll('script'));
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement('script');
-      if (oldScript.src) {
-        newScript.src = oldScript.src;
-      } else {
-        newScript.textContent = oldScript.textContent || '';
-      }
-      if (oldScript.async) newScript.async = true;
-      if (oldScript.defer) newScript.defer = true;
-      container.appendChild(newScript);
-    });
-    scripts.forEach((s) => s.remove());
-  }, [adCanalHtml]);
+    sandboxAdIframes(container);
+  }, [adCanalHtml, sandboxAdIframes]);
 
   const setAdBarRef = useCallback((el: HTMLDivElement | null) => {
     (adBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
