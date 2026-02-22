@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
@@ -65,13 +65,11 @@ export default function CanalDiscussionPage() {
       .catch(() => setAdCanalHtml(''));
   }, []);
 
-  // Exécuter les scripts dans le code pub (ex. Adsterra / highperformanceformat) — dangerouslySetInnerHTML ne les exécute pas
-  useEffect(() => {
-    if (!adBarRef.current || !adCanalHtml.trim()) return;
-    // Éviter d'écraser la pub déjà injectée (ex. React Strict Mode qui relance l'effet)
-    if (adBarRef.current.querySelector('iframe')) return;
-    adBarRef.current.innerHTML = adCanalHtml;
-    const scripts = Array.from(adBarRef.current.querySelectorAll('script'));
+  // Logique d'injection de la pub (réutilisable au montage du div et toutes les 30 s)
+  const runAdInjection = useCallback((container: HTMLDivElement | null) => {
+    if (!container || !adCanalHtml.trim()) return;
+    container.innerHTML = adCanalHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
     scripts.forEach((oldScript) => {
       const newScript = document.createElement('script');
       if (oldScript.src) {
@@ -81,11 +79,30 @@ export default function CanalDiscussionPage() {
       }
       if (oldScript.async) newScript.async = true;
       if (oldScript.defer) newScript.defer = true;
-      adBarRef.current?.appendChild(newScript);
+      container.appendChild(newScript);
     });
-    // Retirer les anciennes balises script (non exécutées) pour que le script externe injecte l'iframe au bon endroit
     scripts.forEach((s) => s.remove());
   }, [adCanalHtml]);
+
+  // Callback ref : injecter dès que le conteneur pub est monté (fixe le cas "retour d'un salon")
+  const setAdBarRef = useCallback((el: HTMLDivElement | null) => {
+    (adBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (el && adCanalHtml.trim() && !el.querySelector('iframe')) {
+      runAdInjection(el);
+    }
+  }, [adCanalHtml, runAdInjection]);
+
+  // Actualisation de la pub toutes les 30 s
+  useEffect(() => {
+    if (!adCanalHtml.trim()) return;
+    const intervalMs = 30_000;
+    const tid = setInterval(() => {
+      if (!adBarRef.current) return;
+      adBarRef.current.innerHTML = '';
+      runAdInjection(adBarRef.current);
+    }, intervalMs);
+    return () => clearInterval(tid);
+  }, [adCanalHtml, runAdInjection]);
 
   // Obtenir le dernier message depuis Firebase
   const getLastMessage = async (roomId: string): Promise<string> => {
@@ -641,7 +658,7 @@ export default function CanalDiscussionPage() {
         </div>
         <div className="ad-bar">
           {adCanalHtml ? (
-            <div ref={adBarRef} className="ad-bar-content" />
+            <div ref={setAdBarRef} className="ad-bar-content" />
           ) : (
             <span className="ad-bar-label">Espace publicitaire</span>
           )}

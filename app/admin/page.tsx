@@ -1229,15 +1229,15 @@ export default function AdminDashboardPage() {
                 <textarea className="admin-settings-input admin-settings-textarea" value={settingsForm.pageFaq} onChange={(e) => setSettingsForm((f) => ({ ...f, pageFaq: e.target.value }))} rows={4} placeholder="Foire aux questions..." disabled={settingsSaving} />
                 <label className="admin-settings-label">À propos</label>
                 <textarea className="admin-settings-input admin-settings-textarea" value={settingsForm.pageAbout} onChange={(e) => setSettingsForm((f) => ({ ...f, pageAbout: e.target.value }))} rows={4} placeholder="À propos du site..." disabled={settingsSaving} />
-                <h3 className="admin-subsection-title">Pub AdMob – Canal de discussion</h3>
+                <h3 className="admin-subsection-title">Pub – Canal de discussion</h3>
                 <label className="admin-settings-label">
-                  Code de la pub (div fourni par AdMob)
+                  Code de la pub
                   <textarea
                     className="admin-settings-input admin-settings-textarea"
                     value={settingsForm.adCanalDiscussion}
                     onChange={(e) => setSettingsForm((f) => ({ ...f, adCanalDiscussion: e.target.value }))}
                     rows={6}
-                    placeholder='Collez ici le code fourni par AdMob (ex. <ins class="adsbygoogle" ...></ins>)'
+                    placeholder='Collez ici le code de la pub (bannière, script fourni par votre régie)'
                     disabled={settingsSaving}
                     spellCheck={false}
                   />

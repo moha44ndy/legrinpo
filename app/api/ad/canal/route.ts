@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-/** API publique : retourne le code de la pub AdMob pour la page canal (sans auth). */
+/** API publique : retourne le code de la pub pour la page canal (sans auth). */
 export async function GET() {
   try {
     const rows = await query('SELECT v FROM settings WHERE k = ?', ['adCanalDiscussion']).catch(() => []);
