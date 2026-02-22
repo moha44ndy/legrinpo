@@ -134,6 +134,15 @@
     display: block;
 }
 
+/* Bannière 320x50 (highperformanceformat / Adsterra) */
+.ad-bar-content iframe {
+    display: block;
+    max-width: 100%;
+    height: 50px;
+    border: 0;
+    margin: 0 auto;
+}
+
 /* Chat Filters */
 .chat-filters {
     display: flex;

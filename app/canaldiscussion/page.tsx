@@ -65,11 +65,13 @@ export default function CanalDiscussionPage() {
       .catch(() => setAdCanalHtml(''));
   }, []);
 
-  // Exécuter les scripts dans le code pub (ex. Adsterra) — dangerouslySetInnerHTML ne les exécute pas
+  // Exécuter les scripts dans le code pub (ex. Adsterra / highperformanceformat) — dangerouslySetInnerHTML ne les exécute pas
   useEffect(() => {
-    if (!adBarRef.current || !adCanalHtml) return;
+    if (!adBarRef.current || !adCanalHtml.trim()) return;
+    // Éviter d'écraser la pub déjà injectée (ex. React Strict Mode qui relance l'effet)
+    if (adBarRef.current.querySelector('iframe')) return;
     adBarRef.current.innerHTML = adCanalHtml;
-    const scripts = adBarRef.current.querySelectorAll('script');
+    const scripts = Array.from(adBarRef.current.querySelectorAll('script'));
     scripts.forEach((oldScript) => {
       const newScript = document.createElement('script');
       if (oldScript.src) {
@@ -81,6 +83,8 @@ export default function CanalDiscussionPage() {
       if (oldScript.defer) newScript.defer = true;
       adBarRef.current?.appendChild(newScript);
     });
+    // Retirer les anciennes balises script (non exécutées) pour que le script externe injecte l'iframe au bon endroit
+    scripts.forEach((s) => s.remove());
   }, [adCanalHtml]);
 
   // Obtenir le dernier message depuis Firebase
