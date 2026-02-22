@@ -53,6 +53,7 @@ interface SiteSettings {
   pageFaq: string;
   pageAbout: string;
   adCanalDiscussion: string;
+  adCanalNative: string;
 }
 
 interface AnalyticsData {
@@ -119,6 +120,7 @@ export default function AdminDashboardPage() {
     pageFaq: '',
     pageAbout: '',
     adCanalDiscussion: '',
+    adCanalNative: '',
   });
   const [userSearch, setUserSearch] = useState('');
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
@@ -229,6 +231,7 @@ export default function AdminDashboardPage() {
           pageFaq: s.pageFaq ?? '',
           pageAbout: s.pageAbout ?? '',
           adCanalDiscussion: s.adCanalDiscussion ?? '',
+          adCanalNative: s.adCanalNative ?? '',
         });
       }
     } catch (e) {
@@ -500,6 +503,7 @@ export default function AdminDashboardPage() {
           pageFaq: settingsForm.pageFaq.trim(),
           pageAbout: settingsForm.pageAbout.trim(),
           adCanalDiscussion: settingsForm.adCanalDiscussion.trim(),
+          adCanalNative: settingsForm.adCanalNative.trim(),
         }),
       });
       const data = await res.json();
@@ -1242,6 +1246,20 @@ export default function AdminDashboardPage() {
                     spellCheck={false}
                   />
                   <span className="admin-settings-hint">Ce contenu sera affiché dans l’espace publicitaire en haut de la page Canal de discussion.</span>
+                </label>
+                <h3 className="admin-subsection-title">Pub native (Native Banner) – Canal de discussion</h3>
+                <label className="admin-settings-label">
+                  Code de la pub native
+                  <textarea
+                    className="admin-settings-input admin-settings-textarea"
+                    value={settingsForm.adCanalNative}
+                    onChange={(e) => setSettingsForm((f) => ({ ...f, adCanalNative: e.target.value }))}
+                    rows={6}
+                    placeholder='Collez ici le script + div fourni par Adsterra (Native Banner). Ex. : script + div container'
+                    disabled={settingsSaving}
+                    spellCheck={false}
+                  />
+                  <span className="admin-settings-hint">Bannière native (NATIVE ASYNC). Collez le bloc complet : le script et le div id="container-...". Affiché sous la bannière principale.</span>
                 </label>
                 <button
                   type="submit"

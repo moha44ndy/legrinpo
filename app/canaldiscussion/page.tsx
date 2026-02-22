@@ -52,7 +52,9 @@ export default function CanalDiscussionPage() {
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
+  const [adCanalNativeHtml, setAdCanalNativeHtml] = useState<string>('');
   const adBarRef = useRef<HTMLDivElement>(null);
+  const adNativeBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -61,8 +63,14 @@ export default function CanalDiscussionPage() {
   useEffect(() => {
     fetch('/api/ad/canal')
       .then((res) => res.json())
-      .then((data) => setAdCanalHtml(data?.adCanalDiscussion ?? ''))
-      .catch(() => setAdCanalHtml(''));
+      .then((data) => {
+        setAdCanalHtml(data?.adCanalDiscussion ?? '');
+        setAdCanalNativeHtml(data?.adCanalNative ?? '');
+      })
+      .catch(() => {
+        setAdCanalHtml('');
+        setAdCanalNativeHtml('');
+      });
   }, []);
 
   // Logique d'injection de la pub (réutilisable au montage du div et toutes les 30 s)
@@ -103,6 +111,43 @@ export default function CanalDiscussionPage() {
     }, intervalMs);
     return () => clearInterval(tid);
   }, [adCanalHtml, runAdInjection]);
+
+  // Pub native (Native Banner) : injection au montage + refresh 30 s
+  const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
+    if (!container || !adCanalNativeHtml.trim()) return;
+    container.innerHTML = adCanalNativeHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) {
+        newScript.src = oldScript.src;
+      } else {
+        newScript.textContent = oldScript.textContent || '';
+      }
+      if (oldScript.async) newScript.async = true;
+      if (oldScript.defer) newScript.defer = true;
+      container.appendChild(newScript);
+    });
+    scripts.forEach((s) => s.remove());
+  }, [adCanalNativeHtml]);
+
+  const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
+    (adNativeBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (el && adCanalNativeHtml.trim()) {
+      runAdNativeInjection(el);
+    }
+  }, [adCanalNativeHtml, runAdNativeInjection]);
+
+  useEffect(() => {
+    if (!adCanalNativeHtml.trim()) return;
+    const intervalMs = 30_000;
+    const tid = setInterval(() => {
+      if (!adNativeBarRef.current) return;
+      adNativeBarRef.current.innerHTML = '';
+      runAdNativeInjection(adNativeBarRef.current);
+    }, intervalMs);
+    return () => clearInterval(tid);
+  }, [adCanalNativeHtml, runAdNativeInjection]);
 
   // Obtenir le dernier message depuis Firebase
   const getLastMessage = async (roomId: string): Promise<string> => {
@@ -665,13 +710,22 @@ export default function CanalDiscussionPage() {
         </div>
       </header>
 
-      {/* Public Rooms Section */}
-      {currentFilter === 'all' && (
+      {/* Public Rooms Section — scrollable à partir de 6 cases */}
+      {currentFilter === 'all' && (() => {
+        const publicRooms = allChats.filter(chat => chat.id.startsWith('public_'));
+        const gridItemCount = 1 + publicRooms.length;
+        const manyCases = gridItemCount >= 6;
+        return (
         <div className="public-rooms-section">
-          <div className="public-room-grid">
-            {allChats
-              .filter(chat => chat.id.startsWith('public_'))
-              .map((chat) => (
+          <div className={`public-room-grid${manyCases ? ' many-cases' : ''}`}>
+            <div className="public-room-btn native-ad-slot" aria-label="Publicité">
+              {adCanalNativeHtml ? (
+                <div ref={setAdNativeBarRef} className="native-ad-inner" />
+              ) : (
+                <span className="native-ad-placeholder">Bannière native</span>
+              )}
+            </div>
+            {publicRooms.map((chat) => (
                 <button
                   key={chat.id}
                   className="public-room-btn"
@@ -681,10 +735,11 @@ export default function CanalDiscussionPage() {
                   <span>{chat.room.name || chat.name}</span>
                   <small>{chat.room.description || ''}</small>
                 </button>
-              ))}
+            ))}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Modal unique : Créer / Rejoindre une discussion */}
       {showJoinModal && (
