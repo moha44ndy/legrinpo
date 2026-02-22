@@ -708,6 +708,7 @@ export default function CanalDiscussionPage() {
         <div className="public-rooms-section">
           <div className={`public-room-grid${manyCases ? ' many-cases' : ''}`}>
             <div className="public-room-btn native-ad-slot" aria-label="Publicité">
+              <span className="native-ad-label" aria-hidden="true">Pub</span>
               {adCanalNativeHtml ? (
                 <div ref={setAdNativeBarRef} className="native-ad-inner" />
               ) : (
