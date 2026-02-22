@@ -83,18 +83,16 @@ export default function CanalCategoriePage() {
         const roomsRef = collection(db, 'rooms');
         const q = query(roomsRef, where('type', '==', 'public'));
         const snapshot = await getDocs(q);
-        const list: RoomItem[] = snapshot.docs
-          .map((docSnap) => {
-            const d = docSnap.data();
-            if (d.categoryId != null && d.categoryId !== '') return null;
-            return {
-              id: docSnap.id,
-              name: (d.name as string) || docSnap.id,
-              description: (d.description as string) || '',
-              categoryId: d.categoryId as string | undefined,
-            };
-          })
-          .filter((r): r is RoomItem => r != null);
+        const list: RoomItem[] = snapshot.docs.flatMap((docSnap) => {
+          const d = docSnap.data();
+          if (d.categoryId != null && d.categoryId !== '') return [];
+          return [{
+            id: docSnap.id,
+            name: (d.name as string) || docSnap.id,
+            description: (d.description as string) || '',
+            categoryId: d.categoryId as string | undefined,
+          }];
+        });
         setRooms(list);
       } else {
         const catRef = doc(db, 'categories', id);
