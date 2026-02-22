@@ -112,23 +112,15 @@ export default function CanalDiscussionPage() {
     return () => clearInterval(tid);
   }, [adCanalHtml, runAdInjection]);
 
-  // Pub native (Native Banner) : injection au montage + refresh 30 s
-  // Les scripts doivent être réexécutés manuellement car innerHTML ne lance pas les <script>
-  // À chaque refresh on ajoute un cache-buster sur les scripts avec src pour forcer rechargement et réexécution
-  const runAdNativeInjection = useCallback((container: HTMLDivElement | null, cacheBuster = false) => {
+  // Pub native (Native Banner) : même logique que la bannière du haut (innerHTML + recréation des scripts)
+  const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalNativeHtml.trim()) return;
-    container.innerHTML = '';
-    const wrap = document.createElement('div');
-    wrap.innerHTML = adCanalNativeHtml;
-    const scripts = Array.from(wrap.querySelectorAll('script'));
-    const nonScripts = Array.from(wrap.childNodes).filter((n) => n.nodeName !== 'SCRIPT');
-    nonScripts.forEach((node) => container.appendChild(node.cloneNode(true)));
-    const bust = cacheBuster ? `_=${Date.now()}` : '';
+    container.innerHTML = adCanalNativeHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
     scripts.forEach((oldScript) => {
       const newScript = document.createElement('script');
       if (oldScript.src) {
-        const sep = oldScript.src.includes('?') ? '&' : '?';
-        newScript.src = bust ? `${oldScript.src}${sep}${bust}` : oldScript.src;
+        newScript.src = oldScript.src;
       } else {
         newScript.textContent = oldScript.textContent || '';
       }
@@ -136,36 +128,14 @@ export default function CanalDiscussionPage() {
       if (oldScript.defer) newScript.defer = true;
       container.appendChild(newScript);
     });
+    scripts.forEach((s) => s.remove());
   }, [adCanalNativeHtml]);
 
   const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
     (adNativeBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-    if (el && adCanalNativeHtml.trim()) {
-      runAdNativeInjection(el, false);
+    if (el && adCanalNativeHtml.trim() && !el.querySelector('iframe')) {
+      runAdNativeInjection(el);
     }
-  }, [adCanalNativeHtml, runAdNativeInjection]);
-
-  // Rattrapage : réinjecter quand le contenu arrive (fetch) ou quand le conteneur est prêt
-  useEffect(() => {
-    if (!adCanalNativeHtml.trim()) return;
-    const t = setTimeout(() => {
-      if (adNativeBarRef.current) runAdNativeInjection(adNativeBarRef.current, false);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [adCanalNativeHtml, runAdNativeInjection]);
-
-  // Refresh bannière native toutes les 30 s (cache-buster pour réaffichage) : les scripts pub ne se réaffichent pas
-  // correctement voir useEffect ci-dessous pour refresh avec cache-buster l’affichage initial.
-
-  useEffect(() => {
-    if (!adCanalNativeHtml.trim()) return;
-    const intervalMs = 30_000;
-    const tid = setInterval(() => {
-      if (!adNativeBarRef.current) return;
-      adNativeBarRef.current.innerHTML = '';
-      runAdNativeInjection(adNativeBarRef.current, true);
-    }, intervalMs);
-    return () => clearInterval(tid);
   }, [adCanalNativeHtml, runAdNativeInjection]);
 
   // Obtenir le dernier message depuis Firebase
