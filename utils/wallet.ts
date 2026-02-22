@@ -28,11 +28,12 @@ export const REWARDS = {
   COMMENT_SENT: 0,        // Pas de récompense pour l'envoi de commentaire (selon les spécifications)
 };
 
-// Montants des réactions en FCFA
+// Montants des réactions en FCFA (auteur du message reçoit ou perd)
 export const REACTION_VALUES: { [emoji: string]: number } = {
-  '❤️': 0.01,    // +0.01 FCFA
-  '🔥': 0.02,    // +0.02 FCFA
-  '😡': -0.005,  // -0.005 FCFA (négatif)
+  '👍': 0.1,     // +0,1 FCFA
+  '❤️': 0.2,     // +0,2 FCFA
+  '🔥': 0.3,     // +0,3 FCFA
+  '😡': -0.1,    // -0,1 FCFA (négatif)
 };
 
 // Bonus mensuel pour les créateurs de groupe
@@ -225,7 +226,9 @@ export async function processReaction(
       messageId
     );
   } else if (amount < 0) {
-    // Réaction négative - retirer de l'argent
+    // Réaction négative - ne rien retirer si le solde est déjà 0 ou négatif
+    const wallet = await getOrCreateWallet(messageOwnerId);
+    if (wallet.balance <= 0) return;
     await removeFromWallet(
       messageOwnerId,
       Math.abs(amount),
