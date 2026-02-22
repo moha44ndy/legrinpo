@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: 'Legrinpo - Discussions',
   description: 'Plateforme de discussion et de coordination en temps réel - Legrinpo',
   manifest: '/manifest.webmanifest',
+  icons: { icon: '/icons/icon-192.png' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

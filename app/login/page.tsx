@@ -30,6 +30,9 @@ export default function LoginPage() {
         case 'auth/user-not-found':
           errorMessage = 'Aucun compte trouvé avec cet email';
           break;
+        case 'auth/invalid-credentials':
+          errorMessage = 'Email / nom d\'utilisateur ou mot de passe incorrect';
+          break;
         case 'auth/wrong-password':
           errorMessage = 'Mot de passe incorrect';
           break;

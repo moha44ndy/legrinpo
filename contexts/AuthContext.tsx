@@ -105,9 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const error = new Error(data.error || 'Erreur lors de la connexion');
-        (error as any).code = data.error?.toLowerCase().includes('email') || data.error?.toLowerCase().includes('mot de passe') 
-          ? 'auth/user-not-found' 
-          : 'auth/error';
+        (error as any).code = 'auth/invalid-credentials';
         throw error;
       }
 

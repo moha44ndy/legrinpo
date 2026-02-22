@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { logLogin } from '@/lib/admin-logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   const rateLimit = checkRateLimit(request, 'auth:login', { windowMs: 60 * 1000, max: 15 });
@@ -30,20 +30,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Trouver l'utilisateur par email OU nom d'utilisateur
-    const users = await query(
-      'SELECT id, uid, email, username, display_name, avatar, password_hash, COALESCE(is_admin, 0) AS is_admin, COALESCE(is_disabled, 0) AS is_disabled FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) LIMIT 1',
-      [loginInput, loginInput]
-    );
+    // Trouver l'utilisateur par email OU nom d'utilisateur (recherche insensible à la casse via Supabase)
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Configuration serveur manquante' },
+        { status: 500 }
+      );
+    }
 
-    if (!Array.isArray(users) || users.length === 0) {
+    const selectCols = 'id, uid, email, username, display_name, avatar, password_hash, is_admin, is_disabled';
+    const { data: byEmail } = await supabaseAdmin
+      .from('users')
+      .select(selectCols)
+      .ilike('email', loginInput)
+      .limit(1);
+    let userRow: any = byEmail?.[0];
+    if (!userRow) {
+      const { data: byUsername } = await supabaseAdmin
+        .from('users')
+        .select(selectCols)
+        .ilike('username', loginInput)
+        .limit(1);
+      userRow = byUsername?.[0];
+    }
+
+    if (!userRow) {
       return NextResponse.json(
         { error: 'Email ou mot de passe incorrect' },
         { status: 401 }
       );
     }
 
-    const user = users[0] as { id: number; uid: string; email: string; username: string; display_name: string; avatar: string | null; password_hash: string; is_admin: number; is_disabled: number };
+    const user = {
+      id: userRow.id,
+      uid: userRow.uid,
+      email: userRow.email,
+      username: userRow.username,
+      display_name: userRow.display_name,
+      avatar: userRow.avatar ?? null,
+      password_hash: userRow.password_hash,
+      is_admin: userRow.is_admin ?? 0,
+      is_disabled: userRow.is_disabled ?? 0,
+    };
 
     if (user.is_disabled) {
       return NextResponse.json(

@@ -113,10 +113,15 @@ export default function CanalDiscussionPage() {
   }, [adCanalHtml, runAdInjection]);
 
   // Pub native (Native Banner) : injection au montage + refresh 30 s
+  // Les scripts doivent être réexécutés manuellement car innerHTML ne lance pas les <script>
   const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalNativeHtml.trim()) return;
-    container.innerHTML = adCanalNativeHtml;
-    const scripts = Array.from(container.querySelectorAll('script'));
+    container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = adCanalNativeHtml;
+    const scripts = Array.from(wrap.querySelectorAll('script'));
+    const nonScripts = Array.from(wrap.childNodes).filter((n) => n.nodeName !== 'SCRIPT');
+    nonScripts.forEach((node) => container.appendChild(node.cloneNode(true)));
     scripts.forEach((oldScript) => {
       const newScript = document.createElement('script');
       if (oldScript.src) {
@@ -128,7 +133,6 @@ export default function CanalDiscussionPage() {
       if (oldScript.defer) newScript.defer = true;
       container.appendChild(newScript);
     });
-    scripts.forEach((s) => s.remove());
   }, [adCanalNativeHtml]);
 
   const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
@@ -136,6 +140,15 @@ export default function CanalDiscussionPage() {
     if (el && adCanalNativeHtml.trim()) {
       runAdNativeInjection(el);
     }
+  }, [adCanalNativeHtml, runAdNativeInjection]);
+
+  // Rattrapage : réinjecter quand le contenu arrive (fetch) ou quand le conteneur est prêt
+  useEffect(() => {
+    if (!adCanalNativeHtml.trim()) return;
+    const t = setTimeout(() => {
+      if (adNativeBarRef.current) runAdNativeInjection(adNativeBarRef.current);
+    }, 300);
+    return () => clearTimeout(t);
   }, [adCanalNativeHtml, runAdNativeInjection]);
 
   useEffect(() => {
