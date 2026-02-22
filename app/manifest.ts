@@ -13,15 +13,15 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
-        src: '/icons/icon-192.png',
+        src: '/logo_legrinpo.jpeg',
         sizes: '192x192',
-        type: 'image/png',
-        purpose: 'maskable',
+        type: 'image/jpeg',
+        purpose: 'any',
       },
       {
-        src: '/icons/icon-512.png',
+        src: '/logo_legrinpo.jpeg',
         sizes: '512x512',
-        type: 'image/png',
+        type: 'image/jpeg',
         purpose: 'maskable',
       },
     ],
