@@ -114,7 +114,8 @@ export default function CanalDiscussionPage() {
 
   // Pub native (Native Banner) : injection au montage + refresh 30 s
   // Les scripts doivent être réexécutés manuellement car innerHTML ne lance pas les <script>
-  const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
+  // À chaque refresh on ajoute un cache-buster sur les scripts avec src pour forcer rechargement et réexécution
+  const runAdNativeInjection = useCallback((container: HTMLDivElement | null, cacheBuster = false) => {
     if (!container || !adCanalNativeHtml.trim()) return;
     container.innerHTML = '';
     const wrap = document.createElement('div');
@@ -122,10 +123,12 @@ export default function CanalDiscussionPage() {
     const scripts = Array.from(wrap.querySelectorAll('script'));
     const nonScripts = Array.from(wrap.childNodes).filter((n) => n.nodeName !== 'SCRIPT');
     nonScripts.forEach((node) => container.appendChild(node.cloneNode(true)));
+    const bust = cacheBuster ? `_=${Date.now()}` : '';
     scripts.forEach((oldScript) => {
       const newScript = document.createElement('script');
       if (oldScript.src) {
-        newScript.src = oldScript.src;
+        const sep = oldScript.src.includes('?') ? '&' : '?';
+        newScript.src = bust ? `${oldScript.src}${sep}${bust}` : oldScript.src;
       } else {
         newScript.textContent = oldScript.textContent || '';
       }
@@ -138,7 +141,7 @@ export default function CanalDiscussionPage() {
   const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
     (adNativeBarRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
     if (el && adCanalNativeHtml.trim()) {
-      runAdNativeInjection(el);
+      runAdNativeInjection(el, false);
     }
   }, [adCanalNativeHtml, runAdNativeInjection]);
 
@@ -146,10 +149,13 @@ export default function CanalDiscussionPage() {
   useEffect(() => {
     if (!adCanalNativeHtml.trim()) return;
     const t = setTimeout(() => {
-      if (adNativeBarRef.current) runAdNativeInjection(adNativeBarRef.current);
+      if (adNativeBarRef.current) runAdNativeInjection(adNativeBarRef.current, false);
     }, 300);
     return () => clearTimeout(t);
   }, [adCanalNativeHtml, runAdNativeInjection]);
+
+  // Refresh bannière native toutes les 30 s (cache-buster pour réaffichage) : les scripts pub ne se réaffichent pas
+  // correctement voir useEffect ci-dessous pour refresh avec cache-buster l’affichage initial.
 
   useEffect(() => {
     if (!adCanalNativeHtml.trim()) return;
@@ -157,7 +163,7 @@ export default function CanalDiscussionPage() {
     const tid = setInterval(() => {
       if (!adNativeBarRef.current) return;
       adNativeBarRef.current.innerHTML = '';
-      runAdNativeInjection(adNativeBarRef.current);
+      runAdNativeInjection(adNativeBarRef.current, true);
     }, intervalMs);
     return () => clearInterval(tid);
   }, [adCanalNativeHtml, runAdNativeInjection]);
