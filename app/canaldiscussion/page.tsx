@@ -62,11 +62,22 @@ export default function CanalDiscussionPage() {
     });
   }, []);
 
-  // Injection de la pub : HTML uniquement, sans exécuter les scripts ; iframes sandboxées
+  // Injection de la pub : HTML + exécution des scripts (pour affichage), puis sandbox des iframes (évite redirections)
   const runAdInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalHtml.trim()) return;
     container.innerHTML = adCanalHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) newScript.src = oldScript.src;
+      else newScript.textContent = oldScript.textContent || '';
+      if (oldScript.async) newScript.async = true;
+      if (oldScript.defer) newScript.defer = true;
+      container.appendChild(newScript);
+    });
+    scripts.forEach((s) => s.remove());
     sandboxAdIframes(container);
+    setTimeout(() => sandboxAdIframes(container), 2000);
   }, [adCanalHtml, sandboxAdIframes]);
 
   // Callback ref : injecter une seule fois quand le conteneur pub est monté
@@ -77,11 +88,22 @@ export default function CanalDiscussionPage() {
     }
   }, [adCanalHtml, runAdInjection]);
 
-  // Pub native : HTML uniquement, sans exécuter les scripts ; iframes sandboxées
+  // Pub native : HTML + exécution des scripts, puis sandbox des iframes
   const runAdNativeInjection = useCallback((container: HTMLDivElement | null) => {
     if (!container || !adCanalNativeHtml.trim()) return;
     container.innerHTML = adCanalNativeHtml;
+    const scripts = Array.from(container.querySelectorAll('script'));
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) newScript.src = oldScript.src;
+      else newScript.textContent = oldScript.textContent || '';
+      if (oldScript.async) newScript.async = true;
+      if (oldScript.defer) newScript.defer = true;
+      container.appendChild(newScript);
+    });
+    scripts.forEach((s) => s.remove());
     sandboxAdIframes(container);
+    setTimeout(() => sandboxAdIframes(container), 2000);
   }, [adCanalNativeHtml, sandboxAdIframes]);
 
   const setAdNativeBarRef = useCallback((el: HTMLDivElement | null) => {
