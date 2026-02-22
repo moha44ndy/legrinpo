@@ -19,6 +19,7 @@ function mapRoom(docId: string, data: Record<string, unknown> & { createdAt?: { 
     description: String(data.description ?? ''),
     type: String(data.type ?? 'public'),
     createdAt,
+    categoryId: data.categoryId != null ? String(data.categoryId) : undefined,
   };
 }
 
@@ -85,6 +86,8 @@ export async function POST(request: NextRequest) {
     const roomId = String(body.roomId ?? body.room_id ?? '').trim().replace(/[^a-z0-9_-]/gi, '_');
     const name = String(body.name ?? '').trim();
     const description = String(body.description ?? '').trim();
+    const categoryIdRaw = body.categoryId != null ? String(body.categoryId).trim() : '';
+    const categoryId = categoryIdRaw || null; // null = Sans catégorie
     if (!roomId || !name) {
       return NextResponse.json(
         { error: 'Identifiant du salon (roomId) et nom sont requis' },
@@ -106,11 +109,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Un salon avec cet identifiant existe déjà' }, { status: 400 });
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       roomId,
       name,
       description: description || '',
       type: 'public',
+      ...(categoryId != null ? { categoryId } : {}),
       createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
     };
     await docRef.set(payload);

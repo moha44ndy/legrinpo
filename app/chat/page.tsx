@@ -19,6 +19,8 @@ function ChatPageContent() {
   const roomId = searchParams.get('room');
   const roomPassword = searchParams.get('password') || undefined;
   const roomNameFromUrl = searchParams.get('roomName') || undefined;
+  const returnToRaw = searchParams.get('returnTo') || '';
+  const returnTo = returnToRaw.startsWith('/canaldiscussion') ? returnToRaw : '/canaldiscussion';
 
   const username = userProfile?.username || userProfile?.displayName || user?.displayName || 'Membre';
   // Utiliser uid de userProfile ou user (priorité à uid pour la persistance du wallet)
@@ -91,9 +93,9 @@ function ChatPageContent() {
 
   useEffect(() => {
     if (!roomId) {
-      router.push('/canaldiscussion');
+      router.push(returnTo);
     }
-  }, [roomId, router]);
+  }, [roomId, router, returnTo]);
 
   // Récupérer les photos de profil des expéditeurs pour afficher les avatars à côté des messages
   useEffect(() => {
@@ -229,7 +231,7 @@ function ChatPageContent() {
             Vous devez être connecté pour accéder au chat.
           </p>
           <a
-            href="/canaldiscussion"
+            href={returnTo}
             style={{
               background: '#4a9eff',
               color: '#ffffff',
@@ -241,7 +243,7 @@ function ChatPageContent() {
               marginTop: '20px',
             }}
           >
-            Retour aux Discussions
+            Retour
           </a>
         </div>
       </main>
@@ -558,7 +560,7 @@ function ChatPageContent() {
             Le mot de passe pour cette discussion privée est incorrect ou manquant.
           </p>
           <a
-            href="/canaldiscussion"
+            href={returnTo}
             style={{
               background: '#4a9eff',
               color: '#ffffff',
@@ -570,7 +572,7 @@ function ChatPageContent() {
               marginTop: '20px',
             }}
           >
-            Retour aux Discussions
+            Retour
           </a>
         </div>
       </main>
@@ -586,7 +588,7 @@ function ChatPageContent() {
             L&apos;administrateur du groupe vous a retiré. Vous ne pouvez plus accéder à cette discussion.
           </p>
           <a
-            href="/canaldiscussion"
+            href={returnTo}
             style={{
               background: '#4a9eff',
               color: '#ffffff',
@@ -598,7 +600,7 @@ function ChatPageContent() {
               marginTop: '20px',
             }}
           >
-            Retour aux Discussions
+            Retour
           </a>
         </div>
       </main>
@@ -767,7 +769,7 @@ function ChatPageContent() {
         <div className="chat-content">
           <div className="chat-header-fixed">
             <div className="chat-header-container chat-header-messenger">
-              <a href="/canaldiscussion" className="leave-btn" title="Retour" aria-label="Retour">
+              <a href={returnTo} className="leave-btn" title="Retour" aria-label="Retour">
                 ‹
               </a>
               <div className="chat-header-center">

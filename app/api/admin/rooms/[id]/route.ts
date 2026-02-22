@@ -18,6 +18,7 @@ function mapRoom(docId: string, data: Record<string, unknown> & { createdAt?: { 
     description: data.description ?? '',
     type: data.type ?? 'public',
     createdAt,
+    categoryId: data.categoryId != null ? String(data.categoryId) : undefined,
   };
 }
 
@@ -37,7 +38,8 @@ export async function PATCH(
     const body = await request.json();
     const name = body.name !== undefined ? String(body.name).trim() : undefined;
     const description = body.description !== undefined ? String(body.description).trim() : undefined;
-    if (name === undefined && description === undefined) {
+    const categoryId = body.categoryId !== undefined ? (body.categoryId === '' || body.categoryId == null ? null : String(body.categoryId).trim()) : undefined;
+    if (name === undefined && description === undefined && categoryId === undefined) {
       return NextResponse.json({ error: 'Aucune modification fournie' }, { status: 400 });
     }
 
@@ -52,9 +54,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Salon non trouvé' }, { status: 404 });
     }
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
+    if (categoryId !== undefined) updates.categoryId = categoryId;
     await docRef.update(updates);
     invalidateRoomsCache();
 

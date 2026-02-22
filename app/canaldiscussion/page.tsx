@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
 import Wallet from '@/components/Wallet';
 import { IconGlobeAlt, IconLock, IconClipboard, IconSearch, IconStar, IconTrash, IconMenu } from '@/components/Icons';
+import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import '../globals.css';
@@ -54,6 +56,7 @@ export default function CanalDiscussionPage() {
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
   const [adCanalNativeHtml, setAdCanalNativeHtml] = useState<string>('');
   const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({ ad: false, discussions: false });
+  const [categoriesCanal, setCategoriesCanal] = useState<{ id: string; name: string; order: number }[]>([]);
   const adBarRef = useRef<HTMLDivElement>(null);
   const adNativeBarRef = useRef<HTMLDivElement>(null);
 
@@ -236,14 +239,23 @@ export default function CanalDiscussionPage() {
         };
       };
 
-      // Salons publics : uniquement ceux présents dans Firebase (ajoutés par l'admin)
-      let publicRooms: { id: string; name: string; description: string; createdAt: number }[] = [];
+      // Salons publics : Firebase (rooms) + catégories pour regroupement
+      let publicRooms: { id: string; name: string; description: string; createdAt: number; categoryId?: string }[] = [];
+      let categoriesList: { id: string; name: string; order: number }[] = [];
       if (db) {
         try {
-          const roomsRef = collection(db, 'rooms');
-          const q = query(roomsRef, where('type', '==', 'public'));
-          const snapshot = await getDocs(q);
-          publicRooms = snapshot.docs
+          const [roomsSnap, categoriesSnap] = await Promise.all([
+            getDocs(query(collection(db, 'rooms'), where('type', '==', 'public'))),
+            getDocs(query(collection(db, 'categories'), orderBy('order'))),
+          ]);
+          categoriesList = categoriesSnap.docs
+            .map((doc) => {
+              const d = doc.data();
+              return { id: doc.id, name: String(d.name ?? ''), order: Number(d.order ?? 0) };
+            })
+            .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+          setCategoriesCanal(categoriesList);
+          publicRooms = roomsSnap.docs
             .map((doc) => {
               const d = doc.data();
               const raw = d.createdAt;
@@ -258,6 +270,7 @@ export default function CanalDiscussionPage() {
                 name: (d.name as string) || doc.id,
                 description: (d.description as string) || '',
                 createdAt,
+                categoryId: d.categoryId as string | undefined,
               };
             })
             .sort((a, b) => a.createdAt - b.createdAt);
@@ -281,7 +294,8 @@ export default function CanalDiscussionPage() {
             name: publicRoom.name,
             description: publicRoom.description || '',
             type: 'public',
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            categoryId: publicRoom.categoryId,
           }
         });
       }
@@ -716,10 +730,23 @@ export default function CanalDiscussionPage() {
           );
         }
         const publicRooms = allChats.filter(chat => chat.id.startsWith('public_'));
-        const gridItemCount = 1 + publicRooms.length;
-        const manyCases = gridItemCount >= 6;
+        const byCategory = new Map<string, typeof publicRooms>();
+        const noneKey = '__none__';
+        for (const chat of publicRooms) {
+          const key = chat.room.categoryId ?? noneKey;
+          if (!byCategory.has(key)) byCategory.set(key, []);
+          byCategory.get(key)!.push(chat);
+        }
+        const hasUncategorized = byCategory.has(noneKey) && (byCategory.get(noneKey)?.length ?? 0) > 0;
+        // Exclure toute catégorie "sans-categorie" des cases ; "Sans catégorie" (salons sans categoryId) s'affiche toujours en dernier
+        const categoryCards = categoriesCanal.filter(
+          (cat) => cat.id !== 'sans-categorie' && (byCategory.get(cat.id)?.length ?? 0) > 0
+        );
+        const totalCards = 1 + categoryCards.length + (hasUncategorized ? 1 : 0); /* 1 = bannière */
+        const manyCases = totalCards >= 6;
         return (
         <div className="public-rooms-section">
+          {/* Même ligne : bannière native en 1ère position, puis cases catégories */}
           <div className={`public-room-grid${manyCases ? ' many-cases' : ''}`}>
             <div className="public-room-btn native-ad-slot" aria-label="Publicité">
               <span className="native-ad-label" aria-hidden="true">Pub</span>
@@ -729,18 +756,64 @@ export default function CanalDiscussionPage() {
                 <span className="native-ad-placeholder">Bannière native</span>
               )}
             </div>
-            {publicRooms.map((chat) => (
-                <button
-                  key={chat.id}
-                  className="public-room-btn"
-                  onClick={() => handleRejoinRoom(chat)}
+            {categoryCards.map((cat) => {
+              const count = byCategory.get(cat.id)?.length ?? 0;
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/canaldiscussion/categorie/${cat.id}`}
+                  className="public-room-btn public-category-card"
+                  aria-label={`${cat.name}, ${count} groupe${count !== 1 ? 's' : ''}`}
                 >
                   <span><IconGlobeAlt size={24} /></span>
-                  <span>{chat.room.name || chat.name}</span>
-                  <small>{chat.room.description || ''}</small>
-                </button>
-            ))}
+                  <span>{cat.name}</span>
+                  <small>{count} groupe{count !== 1 ? 's' : ''}</small>
+                </Link>
+              );
+            })}
+            {/* Sans catégorie en dernière position uniquement si elle contient au moins 1 groupe */}
+            {hasUncategorized && (
+              <Link
+                href="/canaldiscussion/categorie/sans-categorie"
+                className="public-room-btn public-category-card public-category-card-last"
+                aria-label={`Sans catégorie, ${byCategory.get(noneKey)!.length} groupe${byCategory.get(noneKey)!.length !== 1 ? 's' : ''}`}
+              >
+                <span><IconGlobeAlt size={24} /></span>
+                <span>Sans catégorie</span>
+                <small>{byCategory.get(noneKey)!.length} groupe{byCategory.get(noneKey)!.length !== 1 ? 's' : ''}</small>
+              </Link>
+            )}
           </div>
+          {/* Fallback : aucune catégorie, afficher tous les salons en grille directe */}
+          {categoriesCanal.length === 0 && !hasUncategorized && publicRooms.length > 0 && (
+            <div className="public-rooms-category-block">
+              <div className={`public-room-grid${publicRooms.length >= 6 ? ' many-cases' : ''}`}>
+                {publicRooms.map((chat) => {
+                  const roomName = chat.room.name || chat.name;
+                  const country = getCountryFromRoomName(roomName);
+                  const flagUrl = country ? getCountryFlagUrl(country, 40) : '';
+                  return (
+                    <button
+                      key={chat.id}
+                      type="button"
+                      className="public-room-btn"
+                      onClick={() => handleRejoinRoom(chat)}
+                    >
+                      <span className="public-room-icon">
+                        {flagUrl ? (
+                          <img src={flagUrl} alt="" />
+                        ) : (
+                          <IconGlobeAlt size={24} />
+                        )}
+                      </span>
+                      <span>{roomName}</span>
+                      <small>{chat.room.description || ''}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         );
       })()}

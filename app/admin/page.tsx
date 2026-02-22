@@ -37,6 +37,14 @@ interface AdminRoom {
   description: string;
   type: string;
   createdAt: string;
+  categoryId?: string;
+}
+
+interface AdminCategory {
+  id: string;
+  name: string;
+  order: number;
+  createdAt: string;
 }
 
 type AdminTab = 'stats' | 'users' | 'rooms' | 'analytics' | 'transactions' | 'withdrawals' | 'settings' | 'logs';
@@ -130,15 +138,27 @@ export default function AdminDashboardPage() {
   const [editForm, setEditForm] = useState({ username: '', isDisabled: false });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [roomFormAdd, setRoomFormAdd] = useState({ name: '', description: '' });
+  const [roomFormAdd, setRoomFormAdd] = useState({ name: '', description: '', categoryId: '' });
   const [addRoomSaving, setAddRoomSaving] = useState(false);
   const [editRoom, setEditRoom] = useState<AdminRoom | null>(null);
-  const [editRoomForm, setEditRoomForm] = useState({ name: '', description: '' });
+  const [editRoomForm, setEditRoomForm] = useState({ name: '', description: '', categoryId: '' });
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoryFormAdd, setCategoryFormAdd] = useState({ name: '' });
+  const [addCategorySaving, setAddCategorySaving] = useState(false);
+  const [editCategory, setEditCategory] = useState<AdminCategory | null>(null);
+  const [editCategoryForm, setEditCategoryForm] = useState({ name: '', order: 0 });
+  const [categoryEditSaving, setCategoryEditSaving] = useState(false);
+  const [categoryEditError, setCategoryEditError] = useState<string | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<AdminCategory | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
   const [roomEditSaving, setRoomEditSaving] = useState(false);
   const [roomEditError, setRoomEditError] = useState<string | null>(null);
   const [deletingRoomId, setDeletingRoomId] = useState<number | string | null>(null);
   const [roomToDelete, setRoomToDelete] = useState<AdminRoom | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
@@ -265,9 +285,33 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    try {
+      const res = await fetch('/api/admin/categories');
+      const data = await res.json();
+      if (!res.ok) {
+        setCategoriesError(data.error || 'Erreur chargement');
+        return;
+      }
+      if (data.success && data.categories) setCategories(data.categories);
+      else setCategories([]);
+    } catch (e) {
+      setCategoriesError('Erreur réseau');
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (tab === 'rooms' && user) fetchRooms();
   }, [tab, user, fetchRooms]);
+
+  useEffect(() => {
+    if (tab === 'rooms' && user) fetchCategories();
+  }, [tab, user, fetchCategories]);
 
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -407,6 +451,7 @@ export default function AdminDashboardPage() {
 
   const createRoom = useCallback(async () => {
     const name = roomFormAdd.name.trim();
+    const categoryId = roomFormAdd.categoryId?.trim() ?? '';
     if (!name) {
       setRoomsError('Le nom du salon est requis.');
       return;
@@ -416,20 +461,25 @@ export default function AdminDashboardPage() {
     setAddRoomSaving(true);
     setRoomsError(null);
     try {
+      const body: { roomId: string; name: string; description: string; categoryId: string } = {
+        roomId,
+        name,
+        description: roomFormAdd.description.trim() || '',
+        categoryId,
+      };
       const res = await fetch('/api/admin/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          name,
-          description: roomFormAdd.description.trim() || '',
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
       setRooms((prev) => [...prev, data.room].filter(Boolean));
-      setRoomFormAdd({ name: '', description: '' });
+      setRoomFormAdd({ name: '', description: '', categoryId: '' });
       setShowAddRoom(false);
+      // Sans catégorie = key __none__ dans la liste par catégorie
+      const expandKey = categoryId || '__none__';
+      setExpandedCategoryIds((prev) => new Set([...prev, expandKey]));
     } catch (e: any) {
       setRoomsError(e?.message || 'Erreur création');
     } finally {
@@ -437,9 +487,92 @@ export default function AdminDashboardPage() {
     }
   }, [roomFormAdd]);
 
+  const createCategory = useCallback(async () => {
+    const name = categoryFormAdd.name.trim();
+    if (!name) {
+      setCategoriesError('Le nom de la catégorie est requis.');
+      return;
+    }
+    setAddCategorySaving(true);
+    setCategoriesError(null);
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      setCategories((prev) => [...prev, data.category].filter(Boolean));
+      setCategoryFormAdd({ name: '' });
+      fetchRooms();
+    } catch (e: any) {
+      setCategoriesError(e?.message || 'Erreur création');
+    } finally {
+      setAddCategorySaving(false);
+    }
+  }, [categoryFormAdd, fetchRooms]);
+
+  const openEditCategory = useCallback((c: AdminCategory) => {
+    setEditCategory(c);
+    setEditCategoryForm({ name: c.name, order: c.order });
+    setCategoryEditError(null);
+  }, []);
+
+  const saveEditCategory = useCallback(async () => {
+    if (!editCategory) return;
+    const name = editCategoryForm.name.trim();
+    if (!name) {
+      setCategoryEditError('Le nom de la catégorie est requis.');
+      return;
+    }
+    setCategoryEditSaving(true);
+    setCategoryEditError(null);
+    try {
+      const res = await fetch(`/api/admin/categories/${editCategory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          order: editCategoryForm.order,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      setCategories((prev) => prev.map((x) => (x.id === editCategory.id ? { ...x, ...data.category } : x)));
+      setEditCategory(null);
+    } catch (e: any) {
+      setCategoryEditError(e?.message || 'Erreur mise à jour');
+    } finally {
+      setCategoryEditSaving(false);
+    }
+  }, [editCategory, editCategoryForm]);
+
+  const deleteCategory = useCallback(async (c: AdminCategory, deleteRooms: boolean) => {
+    setCategoryToDelete(null);
+    setDeletingCategoryId(c.id);
+    setCategoriesError(null);
+    try {
+      const res = await fetch(`/api/admin/categories/${c.id}?deleteRooms=${deleteRooms}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      setCategories((prev) => prev.filter((x) => x.id !== c.id));
+      if (deleteRooms) {
+        setRooms((prev) => prev.filter((r) => r.categoryId !== c.id));
+      } else {
+        setRooms((prev) => prev.map((r) => (r.categoryId === c.id ? { ...r, categoryId: undefined } : r)));
+      }
+      fetchRooms();
+    } catch (e: any) {
+      setCategoriesError(e?.message || 'Erreur suppression');
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  }, [fetchRooms]);
+
   const openEditRoom = useCallback((r: AdminRoom) => {
     setEditRoom(r);
-    setEditRoomForm({ name: r.name || '', description: r.description || '' });
+    setEditRoomForm({ name: r.name || '', description: r.description || '', categoryId: r.categoryId ?? '' });
     setRoomEditError(null);
   }, []);
 
@@ -448,13 +581,15 @@ export default function AdminDashboardPage() {
     setRoomEditSaving(true);
     setRoomEditError(null);
     try {
+      const body = {
+        name: editRoomForm.name.trim() || undefined,
+        description: editRoomForm.description.trim() || undefined,
+        categoryId: editRoomForm.categoryId?.trim() || null,
+      };
       const res = await fetch(`/api/admin/rooms/${editRoom.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editRoomForm.name.trim() || undefined,
-          description: editRoomForm.description.trim() || undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -523,6 +658,9 @@ export default function AdminDashboardPage() {
     setError(null);
     setUsersError(null);
     setRoomsError(null);
+    setCategoriesError(null);
+    setCategoryEditError(null);
+    setCategoryToDelete(null);
     setWithdrawalsError(null);
     setSettingsError(null);
   }, []);
@@ -657,7 +795,7 @@ export default function AdminDashboardPage() {
               className={`admin-tab ${tab === 'rooms' ? 'admin-tab-active' : ''}`}
               onClick={() => handleTabChange('rooms')}
             >
-              Salons fixes
+              Catégories et salons
             </button>
             <button
               type="button"
@@ -846,26 +984,102 @@ export default function AdminDashboardPage() {
           </section>
         )}
 
-        {tab === 'rooms' && (
+        {false && (
           <section className="admin-section">
-            <h2 className="admin-section-title">Salons fixes</h2>
-            <p className="admin-section-desc">Gérez les salons publics (créer, modifier, supprimer). Les salons privés ne sont pas affichés.</p>
-            {roomsError && <div className="admin-error">{roomsError}</div>}
+            <h2 className="admin-section-title">Catégories</h2>
+            <p className="admin-section-desc">Créez des catégories pour organiser les salons. Chaque catégorie dispose d’un salon &quot;Global [Nom]&quot; créé automatiquement.</p>
+            {categoriesError && <div className="admin-error">{categoriesError}</div>}
             <div className="admin-rooms-toolbar">
-              <button
-                type="button"
-                className="admin-btn admin-btn-promote"
-                onClick={() => setShowAddRoom((v) => !v)}
-                aria-expanded={showAddRoom ? 'true' : 'false'}
-              >
-                {showAddRoom ? 'Annuler' : 'Ajouter un salon'}
-              </button>
-            </div>
-            {showAddRoom && (
               <form
                 className="admin-settings-form admin-room-form"
+                style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}
+                onSubmit={(e) => { e.preventDefault(); createCategory(); }}
+              >
+                <label className="admin-settings-label" style={{ marginBottom: 0 }}>
+                  Nom de la catégorie
+                  <input
+                    type="text"
+                    className="admin-settings-input"
+                    value={categoryFormAdd.name}
+                    onChange={(e) => setCategoryFormAdd((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex. Politique, Sport"
+                    disabled={addCategorySaving}
+                  />
+                </label>
+                <button type="submit" className="admin-btn admin-btn-save" disabled={addCategorySaving}>
+                  {addCategorySaving ? 'Création...' : 'Créer la catégorie'}
+                </button>
+              </form>
+            </div>
+            {categoriesLoading && categories.length === 0 && (
+              <div className="admin-loading-inline">Chargement des catégories...</div>
+            )}
+            {!categoriesLoading && categories.length === 0 && !categoriesError && (
+              <div className="admin-empty-state">
+                <p className="admin-empty-state-title">Aucune catégorie</p>
+                <p className="admin-empty-state-desc">Créez une catégorie pour organiser vos salons. Un salon &quot;Global [Nom]&quot; sera créé automatiquement.</p>
+              </div>
+            )}
+            {!categoriesLoading && categories.length > 0 && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Nom</th>
+                      <th>Ordre</th>
+                      <th>Créé le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((c) => (
+                      <tr key={c.id}>
+                        <td><span className="admin-cell-email">{c.name}</span></td>
+                        <td>{c.order}</td>
+                        <td>{formatDate(c.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'rooms' && (
+          <section className="admin-section">
+            <h2 className="admin-section-title">Catégories et salons</h2>
+            <p className="admin-section-desc">Créez des catégories puis des salons publics. Chaque catégorie a un salon &quot;Global [Nom]&quot; créé automatiquement.</p>
+
+            <h3 className="admin-subsection-title">Ajouter une catégorie ou un salon</h3>
+            {(categoriesError || roomsError) && (
+              <div className="admin-error">{categoriesError || roomsError}</div>
+            )}
+            <div className="admin-forms-row">
+              <form
+                className="admin-settings-form admin-form-block admin-form-category"
+                onSubmit={(e) => { e.preventDefault(); createCategory(); }}
+              >
+                <h4 className="admin-form-block-title">Nouvelle catégorie</h4>
+                <label className="admin-settings-label">
+                  Nom de la catégorie
+                  <input
+                    type="text"
+                    className="admin-settings-input"
+                    value={categoryFormAdd.name}
+                    onChange={(e) => setCategoryFormAdd((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex. Politique, Sport"
+                    disabled={addCategorySaving}
+                  />
+                </label>
+                <button type="submit" className="admin-btn admin-btn-save" disabled={addCategorySaving}>
+                  {addCategorySaving ? 'Création...' : 'Créer la catégorie'}
+                </button>
+              </form>
+              <form
+                className="admin-settings-form admin-form-block admin-form-room"
                 onSubmit={(e) => { e.preventDefault(); createRoom(); }}
               >
+                <h4 className="admin-form-block-title">Nouveau salon</h4>
                 <label className="admin-settings-label">
                   Nom du salon
                   <input
@@ -876,6 +1090,20 @@ export default function AdminDashboardPage() {
                     placeholder="Nom du salon"
                     disabled={addRoomSaving}
                   />
+                </label>
+                <label className="admin-settings-label">
+                  Catégorie (obligatoire)
+                  <select
+                    className="admin-settings-input"
+                    value={roomFormAdd.categoryId}
+                    onChange={(e) => setRoomFormAdd((f) => ({ ...f, categoryId: e.target.value }))}
+                    disabled={addRoomSaving}
+                  >
+                    <option value="">Sans catégorie</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="admin-settings-label">
                   Description (optionnel)
@@ -892,76 +1120,43 @@ export default function AdminDashboardPage() {
                   {addRoomSaving ? 'Création...' : 'Créer le salon'}
                 </button>
               </form>
+            </div>
+            {categoriesLoading && categories.length === 0 && (
+              <div className="admin-loading-inline">Chargement des catégories...</div>
             )}
-            {roomsLoading && rooms.length === 0 && (
-              <div className="admin-loading-inline">Chargement des salons...</div>
+            {!categoriesLoading && categories.length === 0 && !categoriesError && (
+              <p className="admin-empty-inline">Aucune catégorie. Créez-en une ci-dessus.</p>
             )}
-            {!roomsLoading && rooms.length === 0 && !roomsError && !showAddRoom && (
-              <div className="admin-empty-state">
-                <p className="admin-empty-state-title">Aucun salon fixe</p>
-                <p className="admin-empty-state-desc">Cliquez sur &quot;Ajouter un salon&quot; pour en créer un.</p>
-              </div>
-            )}
-            {!roomsLoading && rooms.length > 0 && (
+            {!categoriesLoading && categories.length > 0 && (
               <div className="admin-table-wrap">
                 <table className="admin-table">
                   <thead>
                     <tr>
                       <th>Nom</th>
-                      <th>Description</th>
-                      <th>Type</th>
+                      <th>Ordre</th>
                       <th>Créé le</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rooms.map((r) => (
-                      <tr key={r.id}>
-                        <td><span className="admin-cell-email">{r.name || r.roomId || '-'}</span></td>
-                        <td>{r.description || '-'}</td>
-                        <td>{r.type || 'public'}</td>
-                        <td>{formatDate(r.createdAt)}</td>
+                    {categories.map((c) => (
+                      <tr key={c.id}>
+                        <td><span className="admin-cell-email">{c.name}</span></td>
+                        <td>{c.order}</td>
+                        <td>{formatDate(c.createdAt)}</td>
                         <td>
                           <div className="admin-row-actions">
-                            {roomToDelete?.id === r.id ? (
+                            {categoryToDelete?.id === c.id ? (
                               <>
-                                <span className="admin-confirm-label">Supprimer &quot;{r.name || r.roomId}&quot; ?</span>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn-promote"
-                                  onClick={() => { deleteRoom(r); setRoomToDelete(null); }}
-                                  disabled={deletingRoomId === r.id}
-                                >
-                                  {deletingRoomId === r.id ? '...' : 'Confirmer'}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn-edit"
-                                  onClick={() => setRoomToDelete(null)}
-                                  disabled={deletingRoomId === r.id}
-                                >
-                                  Annuler
-                                </button>
+                                <span className="admin-confirm-label">Supprimer la catégorie &quot;{c.name}&quot;. Que faire des salons qu&apos;elle contient ?</span>
+                                <button type="button" className="admin-btn admin-btn-promote" onClick={() => deleteCategory(c, false)} disabled={deletingCategoryId === c.id} title="Les salons passeront en sans catégorie">{deletingCategoryId === c.id ? '...' : 'Uniquement la catégorie'}</button>
+                                <button type="button" className="admin-btn admin-btn-delete" onClick={() => deleteCategory(c, true)} disabled={deletingCategoryId === c.id} title="Supprimer aussi les salons">{deletingCategoryId === c.id ? '...' : 'Catégorie et salons'}</button>
+                                <button type="button" className="admin-btn admin-btn-edit" onClick={() => setCategoryToDelete(null)} disabled={deletingCategoryId === c.id}>Annuler</button>
                               </>
                             ) : (
                               <>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn-edit"
-                                  onClick={() => openEditRoom(r)}
-                                  title="Modifier le salon"
-                                >
-                                  Modifier
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn-delete"
-                                  onClick={() => setRoomToDelete(r)}
-                                  disabled={deletingRoomId !== null}
-                                  title="Supprimer le salon"
-                                >
-                                  Supprimer
-                                </button>
+                                <button type="button" className="admin-btn admin-btn-edit" onClick={() => openEditCategory(c)} title="Modifier la catégorie">Modifier</button>
+                                <button type="button" className="admin-btn admin-btn-delete" onClick={() => setCategoryToDelete(c)} disabled={deletingCategoryId !== null} title="Supprimer la catégorie">Supprimer</button>
                               </>
                             )}
                           </div>
@@ -972,6 +1167,139 @@ export default function AdminDashboardPage() {
                 </table>
               </div>
             )}
+
+            {!roomsLoading && rooms.length > 0 && (() => {
+              const roomsByCategory = new Map<string, AdminRoom[]>();
+              const noneKey = '__none__';
+              for (const r of rooms) {
+                const key = (r.categoryId != null && String(r.categoryId).trim() !== '') ? r.categoryId : noneKey;
+                if (!roomsByCategory.has(key)) roomsByCategory.set(key, []);
+                roomsByCategory.get(key)!.push(r);
+              }
+              const toggleCategory = (catId: string) => {
+                setExpandedCategoryIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(catId)) next.delete(catId);
+                  else next.add(catId);
+                  return next;
+                });
+              };
+              return (
+                <div className="admin-rooms-by-category">
+                  {categories.map((cat) => {
+                    const list = roomsByCategory.get(cat.id) ?? [];
+                    if (list.length === 0) return null;
+                    const isExpanded = expandedCategoryIds.has(cat.id);
+                    return (
+                      <div key={cat.id} className="admin-category-block">
+                        <button
+                          type="button"
+                          className="admin-category-toggle"
+                          onClick={() => toggleCategory(cat.id)}
+                          aria-expanded={isExpanded}
+                        >
+                          <span className="admin-category-toggle-icon">{isExpanded ? '▼' : '▶'}</span>
+                          <span>{cat.name}</span>
+                          <span className="admin-category-count">({list.length} salon{list.length !== 1 ? 's' : ''})</span>
+                        </button>
+                        {isExpanded && (
+                          <div className="admin-table-wrap">
+                            <table className="admin-table">
+                              <thead>
+                                <tr>
+                                  <th>Nom</th>
+                                  <th>Description</th>
+                                  <th>Créé le</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {list.map((r) => (
+                                  <tr key={r.id}>
+                                    <td><span className="admin-cell-email">{r.name || r.roomId || '-'}</span></td>
+                                    <td>{r.description || '-'}</td>
+                                    <td>{formatDate(r.createdAt)}</td>
+                                    <td>
+                                      <div className="admin-row-actions">
+                                        {roomToDelete?.id === r.id ? (
+                                          <>
+                                            <span className="admin-confirm-label">Supprimer &quot;{r.name || r.roomId}&quot; ?</span>
+                                            <button type="button" className="admin-btn admin-btn-promote" onClick={() => { deleteRoom(r); setRoomToDelete(null); }} disabled={deletingRoomId === r.id}>{deletingRoomId === r.id ? '...' : 'Confirmer'}</button>
+                                            <button type="button" className="admin-btn admin-btn-edit" onClick={() => setRoomToDelete(null)} disabled={deletingRoomId === r.id}>Annuler</button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button type="button" className="admin-btn admin-btn-edit" onClick={() => openEditRoom(r)} title="Modifier le salon">Modifier</button>
+                                            <button type="button" className="admin-btn admin-btn-delete" onClick={() => setRoomToDelete(r)} disabled={deletingRoomId !== null} title="Supprimer le salon">Supprimer</button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(roomsByCategory.get(noneKey)?.length ?? 0) > 0 && (
+                    <div key={noneKey} className="admin-category-block">
+                      <button
+                        type="button"
+                        className="admin-category-toggle"
+                        onClick={() => toggleCategory(noneKey)}
+                        aria-expanded={expandedCategoryIds.has(noneKey)}
+                      >
+                        <span className="admin-category-toggle-icon">{expandedCategoryIds.has(noneKey) ? '▼' : '▶'}</span>
+                        <span>Sans catégorie</span>
+                        <span className="admin-category-count">({roomsByCategory.get(noneKey)!.length} salon{(roomsByCategory.get(noneKey)!.length) !== 1 ? 's' : ''})</span>
+                      </button>
+                      {expandedCategoryIds.has(noneKey) && (
+                        <div className="admin-table-wrap">
+                          <table className="admin-table">
+                            <thead>
+                              <tr>
+                                <th>Nom</th>
+                                <th>Description</th>
+                                <th>Créé le</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {roomsByCategory.get(noneKey)!.map((r) => (
+                                <tr key={r.id}>
+                                  <td><span className="admin-cell-email">{r.name || r.roomId || '-'}</span></td>
+                                  <td>{r.description || '-'}</td>
+                                  <td>{formatDate(r.createdAt)}</td>
+                                  <td>
+                                    <div className="admin-row-actions">
+                                      {roomToDelete?.id === r.id ? (
+                                        <>
+                                          <span className="admin-confirm-label">Supprimer &quot;{r.name || r.roomId}&quot; ?</span>
+                                          <button type="button" className="admin-btn admin-btn-promote" onClick={() => { deleteRoom(r); setRoomToDelete(null); }} disabled={deletingRoomId === r.id}>{deletingRoomId === r.id ? '...' : 'Confirmer'}</button>
+                                          <button type="button" className="admin-btn admin-btn-edit" onClick={() => setRoomToDelete(null)} disabled={deletingRoomId === r.id}>Annuler</button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <button type="button" className="admin-btn admin-btn-edit" onClick={() => openEditRoom(r)} title="Modifier le salon">Modifier</button>
+                                          <button type="button" className="admin-btn admin-btn-delete" onClick={() => setRoomToDelete(r)} disabled={deletingRoomId !== null} title="Supprimer le salon">Supprimer</button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </section>
         )}
 
@@ -1317,6 +1645,50 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {editCategory && (
+        <div className="admin-modal-overlay" onClick={() => !categoryEditSaving && setEditCategory(null)} role="dialog" aria-modal="true" aria-labelledby="admin-edit-category-title">
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 id="admin-edit-category-title" className="admin-section-title">Modifier la catégorie</h2>
+            {categoryEditError && <div className="admin-error">{categoryEditError}</div>}
+            <form
+              className="admin-settings-form"
+              onSubmit={(e) => { e.preventDefault(); saveEditCategory(); }}
+            >
+              <label className="admin-settings-label">
+                Nom
+                <input
+                  type="text"
+                  className="admin-settings-input"
+                  value={editCategoryForm.name}
+                  onChange={(e) => setEditCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Nom de la catégorie"
+                  disabled={categoryEditSaving}
+                />
+              </label>
+              <label className="admin-settings-label">
+                Ordre d&apos;affichage
+                <input
+                  type="number"
+                  className="admin-settings-input"
+                  value={editCategoryForm.order}
+                  onChange={(e) => setEditCategoryForm((f) => ({ ...f, order: Number(e.target.value) || 0 }))}
+                  min={0}
+                  disabled={categoryEditSaving}
+                />
+              </label>
+              <div className="admin-modal-actions">
+                <button type="button" className="admin-btn" onClick={() => setEditCategory(null)} disabled={categoryEditSaving}>
+                  Annuler
+                </button>
+                <button type="submit" className="admin-btn admin-btn-save" disabled={categoryEditSaving}>
+                  {categoryEditSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {editRoom && (
         <div className="admin-modal-overlay" onClick={() => !roomEditSaving && setEditRoom(null)} role="dialog" aria-modal="true" aria-labelledby="admin-edit-room-title">
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
@@ -1337,6 +1709,20 @@ export default function AdminDashboardPage() {
                   placeholder="Nom du salon"
                   disabled={roomEditSaving}
                 />
+              </label>
+              <label className="admin-settings-label">
+                Catégorie
+                <select
+                  className="admin-settings-input"
+                  value={editRoomForm.categoryId}
+                  onChange={(e) => setEditRoomForm((f) => ({ ...f, categoryId: e.target.value }))}
+                  disabled={roomEditSaving}
+                >
+                  <option value="">Sans catégorie</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </label>
               <label className="admin-settings-label">
                 Description (optionnel)

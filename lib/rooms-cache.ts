@@ -7,6 +7,7 @@ export interface MappedRoom {
   description: string;
   type: string;
   createdAt: string;
+  categoryId?: string;
 }
 
 let roomsCache: { rooms: MappedRoom[]; at: number } | null = null;

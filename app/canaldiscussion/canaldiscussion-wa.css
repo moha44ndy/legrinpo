@@ -59,6 +59,26 @@
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+.categorie-back-bar {
+    padding: 10px 16px;
+    background: #0a0e27;
+    border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+}
+
+.categorie-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a9eff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.categorie-back-link:hover {
+    text-decoration: underline;
+}
+
 .new-chat-btn {
     background: none;
     color: #ffffff;
@@ -603,6 +623,44 @@
     margin-bottom: 12px;
 }
 
+.public-rooms-category-block {
+    margin-bottom: 24px;
+}
+
+.public-rooms-category-block:last-child {
+    margin-bottom: 0;
+}
+
+.public-rooms-category-title {
+    color: #4a9eff;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.public-room-grid-ad-only {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.public-room-grid-categories {
+    margin-top: 16px;
+}
+
+.public-category-card {
+    text-decoration: none;
+    border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.public-category-card:hover {
+    background-color: rgba(74, 158, 255, 0.2);
+    border-color: rgba(74, 158, 255, 0.5);
+}
+
+/* Sans catégorie toujours en dernière position dans la grille */
+.public-category-card-last {
+    order: 999;
+}
+
 /* Public Rooms Grid */
 .public-rooms {
     margin-bottom: 24px;
@@ -664,6 +722,19 @@
 .public-room-btn small {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.6);
+}
+
+.public-room-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.public-room-icon img {
+    width: 32px;
+    height: 24px;
+    object-fit: cover;
+    border-radius: 2px;
 }
 
 .join-section-modal {
