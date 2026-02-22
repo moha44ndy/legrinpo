@@ -1,11 +1,10 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus, IconEdit, IconTrash } from '@/components/Icons';
 import './Wallet.css';
 
@@ -82,8 +81,14 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [editUsernameValue, setEditUsernameValue] = useState('');
   const [usernameEditError, setUsernameEditError] = useState<string | null>(null);
   const [usernameEditSaving, setUsernameEditSaving] = useState(false);
+  const [avatarImgFailed, setAvatarImgFailed] = useState(false);
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
+
+  // Réinitialiser l'erreur d'affichage de l'avatar quand l'URL change (nouvel upload)
+  useEffect(() => {
+    setAvatarImgFailed(false);
+  }, [userProfile?.avatar]);
 
   if (loading) {
     return (
@@ -127,7 +132,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           {(username || userProfile?.username) && (
             <p className="wallet-details-username">
               <span className="wallet-avatar-wrap">
-                {userProfile?.avatar ? (
+                {userProfile?.avatar && !avatarImgFailed ? (
                   <button
                     type="button"
                     className="wallet-avatar-preview-trigger"
@@ -140,10 +145,11 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
                       alt=""
                       className="wallet-avatar-details wallet-avatar-img"
                       referrerPolicy="no-referrer"
+                      onError={() => setAvatarImgFailed(true)}
                     />
                   </button>
                 ) : (
-                  <span className="wallet-avatar-details">{(userProfile?.username || username || '').charAt(0).toUpperCase()}</span>
+                  <span className="wallet-avatar-details">{(userProfile?.username || username || '').charAt(0).toUpperCase() || '?'}</span>
                 )}
                 <label className="wallet-avatar-plus-wrap" title="Changer la photo de profil">
                   <input
@@ -695,6 +701,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
             className="wallet-avatar-preview-img"
             onClick={(e) => e.stopPropagation()}
             referrerPolicy="no-referrer"
+            onError={() => setAvatarImgFailed(true)}
           />
           <button
             type="button"

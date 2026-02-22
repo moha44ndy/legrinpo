@@ -53,6 +53,8 @@ function ChatPageContent() {
   const [isScrollingMessages, setIsScrollingMessages] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
+  const [headerAvatarFailed, setHeaderAvatarFailed] = useState(false);
+  const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
 
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -786,10 +788,17 @@ function ChatPageContent() {
                   <div id="statusIndicator" className={`status-indicator ${connectionStatus}`} />
                 </div>
                 <div className="chat-header-avatar" title={username}>
-                  {userProfile?.avatar ? (
-                    <img key={userProfile.avatar} src={userProfile.avatar} alt="" className="chat-header-avatar-img" referrerPolicy="no-referrer" />
+                  {userProfile?.avatar && !headerAvatarFailed ? (
+                    <img
+                      key={userProfile.avatar}
+                      src={userProfile.avatar}
+                      alt=""
+                      className="chat-header-avatar-img"
+                      referrerPolicy="no-referrer"
+                      onError={() => setHeaderAvatarFailed(true)}
+                    />
                   ) : (
-                    username.charAt(0).toUpperCase()
+                    (username && username.charAt(0).toUpperCase()) || '?'
                   )}
                 </div>
               </div>
@@ -856,18 +865,26 @@ function ChatPageContent() {
                     >
                       <div className={`message-header ${showHeader ? '' : 'message-header-hidden'}`}>
                         <div className="user-avatar">
-                          {(message.avatar || userAvatarsMap[message.userId] || (isOwn && userProfile?.avatar)) ? (
-                            <img
-                              src={message.avatar || userAvatarsMap[message.userId] || userProfile?.avatar || ''}
-                              alt=""
-                              className="avatar-img"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="avatar-initial">
-                              {message.username.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          {(() => {
+                            const avatarUrl = message.avatar || userAvatarsMap[message.userId] || (isOwn ? userProfile?.avatar : null);
+                            const urlFailed = avatarUrl && failedAvatarUrls[avatarUrl];
+                            if (avatarUrl && !urlFailed) {
+                              return (
+                                <img
+                                  src={avatarUrl}
+                                  alt=""
+                                  className="avatar-img"
+                                  referrerPolicy="no-referrer"
+                                  onError={() => setFailedAvatarUrls((prev) => ({ ...prev, [avatarUrl]: true }))}
+                                />
+                              );
+                            }
+                            return (
+                              <div className="avatar-initial">
+                                {(message.username && message.username.charAt(0).toUpperCase()) || '?'}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="message-details">
                           <div className="username-display">

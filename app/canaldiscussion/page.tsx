@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadHistory, saveHistory, RoomHistory, RoomHistoryItem } from '@/utils/storage';
@@ -52,6 +52,7 @@ export default function CanalDiscussionPage() {
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
+  const adBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -63,6 +64,24 @@ export default function CanalDiscussionPage() {
       .then((data) => setAdCanalHtml(data?.adCanalDiscussion ?? ''))
       .catch(() => setAdCanalHtml(''));
   }, []);
+
+  // Exécuter les scripts dans le code pub (ex. Adsterra) — dangerouslySetInnerHTML ne les exécute pas
+  useEffect(() => {
+    if (!adBarRef.current || !adCanalHtml) return;
+    adBarRef.current.innerHTML = adCanalHtml;
+    const scripts = adBarRef.current.querySelectorAll('script');
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) {
+        newScript.src = oldScript.src;
+      } else {
+        newScript.textContent = oldScript.textContent || '';
+      }
+      if (oldScript.async) newScript.async = true;
+      if (oldScript.defer) newScript.defer = true;
+      adBarRef.current?.appendChild(newScript);
+    });
+  }, [adCanalHtml]);
 
   // Obtenir le dernier message depuis Firebase
   const getLastMessage = async (roomId: string): Promise<string> => {
@@ -618,7 +637,7 @@ export default function CanalDiscussionPage() {
         </div>
         <div className="ad-bar">
           {adCanalHtml ? (
-            <div className="ad-bar-content" dangerouslySetInnerHTML={{ __html: adCanalHtml }} />
+            <div ref={adBarRef} className="ad-bar-content" />
           ) : (
             <span className="ad-bar-label">Espace publicitaire</span>
           )}
