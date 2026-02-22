@@ -578,6 +578,19 @@
     -webkit-overflow-scrolling: touch;
 }
 
+.public-rooms-loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+.public-rooms-loading-text {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .public-rooms-title {
     color: #4a9eff;
     font-size: 16px;

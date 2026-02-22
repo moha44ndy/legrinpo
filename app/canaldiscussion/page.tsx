@@ -53,6 +53,7 @@ export default function CanalDiscussionPage() {
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<{ [key: string]: number }>({});
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
   const [adCanalNativeHtml, setAdCanalNativeHtml] = useState<string>('');
+  const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({ ad: false, discussions: false });
   const adBarRef = useRef<HTMLDivElement>(null);
   const adNativeBarRef = useRef<HTMLDivElement>(null);
 
@@ -66,10 +67,12 @@ export default function CanalDiscussionPage() {
       .then((data) => {
         setAdCanalHtml(data?.adCanalDiscussion ?? '');
         setAdCanalNativeHtml(data?.adCanalNative ?? '');
+        setSectionLoaded(prev => ({ ...prev, ad: true }));
       })
       .catch(() => {
         setAdCanalHtml('');
         setAdCanalNativeHtml('');
+        setSectionLoaded(prev => ({ ...prev, ad: true }));
       });
   }, []);
 
@@ -308,6 +311,7 @@ export default function CanalDiscussionPage() {
         timestamps[chat.id] = new Date(chat.timestamp).getTime();
       }
       setLastMessageTimestamps(timestamps);
+      setSectionLoaded(prev => ({ ...prev, discussions: true }));
     };
 
     loadDiscussions();
@@ -699,8 +703,18 @@ export default function CanalDiscussionPage() {
         </div>
       </header>
 
-      {/* Public Rooms Section — scrollable à partir de 6 cases */}
+      {/* Public Rooms Section — Chargement... puis grille (bannière native + cases) */}
       {currentFilter === 'all' && (() => {
+        const ready = sectionLoaded.ad && sectionLoaded.discussions;
+        if (!ready) {
+          return (
+            <div className="public-rooms-section">
+              <div className="public-rooms-loading">
+                <span className="public-rooms-loading-text">Chargement...</span>
+              </div>
+            </div>
+          );
+        }
         const publicRooms = allChats.filter(chat => chat.id.startsWith('public_'));
         const gridItemCount = 1 + publicRooms.length;
         const manyCases = gridItemCount >= 6;
