@@ -40,6 +40,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7440739960679215"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         <AuthProvider>
@@ -49,4 +55,3 @@ export default function RootLayout({
     </html>
   )
 }
-
