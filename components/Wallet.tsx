@@ -320,19 +320,13 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
           >
             Paramètres
           </button>
-          <button
-            type="button"
+          <Link
+            href="/help"
             className="wallet-help-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setHelpError(null);
-              setHelpSent(false);
-              setHelpForm({ subject: '', message: '' });
-              requestAnimationFrame(() => setShowHelpModal(true));
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             Aide
-          </button>
+          </Link>
           {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
             <Link
               href="/admin"
