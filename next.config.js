@@ -17,6 +17,26 @@ try {
     disable: process.env.NODE_ENV === 'development',
     register: true,
     skipWaiting: true,
+    cacheOnFrontendNav: true,
+    cacheStartUrl: true,
+    reloadOnOnline: true,
+    fallbacks: {
+      document: '/~offline',
+    },
+    extendDefaultRuntimeCaching: true,
+    workboxOptions: {
+      runtimeCaching: [
+        {
+          urlPattern: ({ sameOrigin, url }) => sameOrigin && (url.pathname === '/' || url.pathname.startsWith('/canaldiscussion') || url.pathname.startsWith('/chat') || url.pathname.startsWith('/login')),
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'legrinpo-pages',
+            expiration: { maxEntries: 16, maxAgeSeconds: 24 * 60 * 60 },
+            networkTimeoutSeconds: 5,
+          },
+        },
+      ],
+    },
   })
 } catch (_) {}
 

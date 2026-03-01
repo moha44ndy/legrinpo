@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Plateforme de discussion et de coordination en temps réel - Legrinpo',
     start_url: '/',
     display: 'standalone',
-    display_override: ['window-controls-overlay', 'standalone', 'browser'],
+    display_override: ['window-controls-overlay', 'standalone', 'tabbed', 'browser'] as MetadataRoute.Manifest['display_override'],
     // Partage système : l’app reçoit titre, texte et URL via l’action (ex. /?title=...&text=...&url=...)
     share_target: {
       action: '/',
@@ -24,6 +24,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#1a237e',
     orientation: 'portrait',
     scope: '/',
+    // PWA Builder : domaines additionnels (sous-domaines, etc.). Vide = uniquement cette origine.
+    scope_extensions: [],
+    // Ouverture de fichiers par l’app (optionnel). Vide = pas de types gérés pour l’instant.
+    file_handlers: [],
+    // Protocoles (mailto:, sms:, web+…). Vide = aucun pour l’instant.
+    protocol_handlers: [],
     icons: [
       {
         src: '/icons/icon-192.png',
@@ -35,16 +41,34 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icons/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
         purpose: 'maskable',
       },
     ],
-    // Screenshots pour les stores (PWA Builder). Ajouter des PNG 1280x720+ dans public/screenshots/
+    // Screenshots pour les stores (PWA Builder). narrow = mobile, wide = tablette/desktop.
     screenshots: [
       {
         src: '/screenshots/app.png',
         sizes: '1280x720',
         type: 'image/png',
       },
+      {
+        src: '/screenshots/app.png',
+        sizes: '1920x1080',
+        type: 'image/png',
+      },
+      // Capture mobile (form_factor non typé par Next mais inclus dans le JSON)
+      {
+        src: '/screenshots/app.png',
+        sizes: '390x844',
+        type: 'image/png',
+        form_factor: 'narrow',
+      } as { src: string; sizes?: string; type?: string },
     ],
     prefer_related_applications: false,
     related_applications: [],
@@ -60,5 +84,7 @@ export default function manifest(): MetadataRoute.Manifest {
     } as MetadataRoute.Manifest['launch_handler'],
     categories: ['social', 'productivity'],
     lang: 'fr',
-  };
+    // Edge : épingler l’app dans la barre latérale (non typé par Next)
+    edge_side_panel: { preferred_width: 400 },
+  } as MetadataRoute.Manifest & { scope_extensions: unknown[]; edge_side_panel?: { preferred_width?: number } };
 }

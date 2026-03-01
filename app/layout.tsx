@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { SyncRegistration } from '@/components/SyncRegistration'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -48,6 +49,7 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
+          <SyncRegistration />
           {children}
         </AuthProvider>
       </body>
