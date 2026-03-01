@@ -100,11 +100,11 @@ function ChatPageContent() {
     style.id = id;
     style.textContent = `
       .chat-header-fixed {
-        padding-top: max(6px, min(18px, env(safe-area-inset-top, 0px))) !important;
+        padding-top: max(4px, min(10px, env(safe-area-inset-top, 0px))) !important;
         padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
         padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
       }
-      .chat-content { top: 88px !important; }
+      .chat-content { top: 82px !important; }
       .input-container {
         padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
         padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
