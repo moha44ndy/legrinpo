@@ -50,21 +50,16 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
-    // Screenshots pour les stores (PWA Builder). narrow = mobile, wide = tablette/desktop.
+    // Screenshots : sizes doit correspondre aux dimensions réelles des images.
     screenshots: [
       {
         src: '/screenshots/app.png',
         sizes: '1280x720',
         type: 'image/png',
       },
+      // Capture mobile (form_factor narrow). Utiliser app-mobile.png si tu as une vraie capture portrait.
       {
-        src: '/screenshots/app.png',
-        sizes: '1920x1080',
-        type: 'image/png',
-      },
-      // Capture mobile (form_factor non typé par Next mais inclus dans le JSON)
-      {
-        src: '/screenshots/app.png',
+        src: '/screenshots/app-mobile.png',
         sizes: '390x844',
         type: 'image/png',
         form_factor: 'narrow',
