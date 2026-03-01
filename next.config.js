@@ -1,17 +1,11 @@
 /** @type {import('next').NextConfig} */
-const isCapacitorBuild = process.env.CAPACITOR_BUILD === '1'
 const nextConfig = {
   reactStrictMode: true,
-  // Export statique uniquement en CI (Codemagic) pour générer cap-web puis cap sync ios
-  ...(isCapacitorBuild && { output: 'export' }),
-  // rewrites non supportés avec output: 'export' — absents en CI pour éviter l'avertissement
-  ...(!isCapacitorBuild && {
-    async rewrites() {
-      return [
-        { source: '/manifest.json', destination: '/manifest.webmanifest' },
-      ]
-    },
-  }),
+  async rewrites() {
+    return [
+      { source: '/manifest.json', destination: '/manifest.webmanifest' },
+    ]
+  },
 }
 
 // PWA (service worker) — optionnel : npm install @ducanh2912/next-pwa

@@ -10,19 +10,19 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.legrinpo.app
       vars:
-        # Projet Capacitor : le workspace iOS est toujours dans ios/App/
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
+        # URL du site en prod : l’app iOS charge cette URL (pas de build Next en CI)
+        PRODUCTION_WEB_URL: "https://legrinpo.com"
       xcode: latest
       cocoapods: default
     scripts:
       - name: Install npm dependencies
         script: npm ci
-      - name: Build web + sync Capacitor
+      - name: Prepare cap-web + sync Capacitor
         script: |
-          export CAPACITOR_BUILD=1
-          npm run build
-          rm -rf cap-web && mkdir -p cap-web && cp -r out/* cap-web/
+          rm -rf cap-web && mkdir -p cap-web
+          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Legrinpo</title></head><body><p>Chargement…</p></body></html>' > cap-web/index.html
           npx cap sync ios
       - name: Install CocoaPods
         script: cd ios/App && pod install && cd ../..
