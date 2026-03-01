@@ -13,11 +13,11 @@ export default function manifest(): MetadataRoute.Manifest {
     share_target: {
       action: '/',
       method: 'get',
-      params: {
-        title: 'title',
-        text: 'text',
-        url: 'url',
-      },
+      params: [
+        { name: 'title', value: 'title' },
+        { name: 'text', value: 'text' },
+        { name: 'url', value: 'url' },
+      ],
     },
     dir: 'ltr',
     background_color: '#0a0e27',
