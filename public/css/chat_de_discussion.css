@@ -414,7 +414,14 @@ body {
     min-width: 0;
 }
 
-/* 16px minimum pour éviter le zoom automatique iOS au focus */
+/* 16px minimum + touch-action pour éviter zoom et décalage (iOS/Safari et app) */
+.input-container input,
+.input-container textarea,
+.input-container .message-input,
+.message-input {
+    font-size: 16px !important;
+    touch-action: manipulation;
+}
 .message-input {
     flex: 1;
     min-width: 0;
@@ -422,7 +429,6 @@ body {
     border: 2px solid var(--border-color);
     border-radius: 12px;
     outline: none;
-    font-size: 16px;
     transition: all 0.3s;
     background: rgba(15, 23, 42, 0.8);
     color: var(--text-primary);

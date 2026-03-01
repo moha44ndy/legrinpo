@@ -110,6 +110,12 @@ function ChatPageContent() {
         padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
         padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
       }
+      .input-container .message-input,
+      .input-container input,
+      .input-container textarea {
+        font-size: 16px !important;
+        touch-action: manipulation;
+      }
       .leave-btn { left: max(12px, env(safe-area-inset-left, 0px)) !important; }
       .status-indicator { right: max(12px, env(safe-area-inset-right, 0px)) !important; }
     `;
