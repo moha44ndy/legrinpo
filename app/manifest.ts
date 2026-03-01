@@ -46,7 +46,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/screenshots/app.png',
         sizes: '1280x720',
         type: 'image/png',
-        label: 'Legrinpo - Discussions',
       },
     ],
     prefer_related_applications: false,
