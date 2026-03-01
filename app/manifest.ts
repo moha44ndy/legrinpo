@@ -2,11 +2,14 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: '/',
     name: 'Legrinpo - Discussions',
     short_name: 'Legrinpo',
     description: 'Plateforme de discussion et de coordination en temps réel - Legrinpo',
     start_url: '/',
     display: 'standalone',
+    display_override: ['window-controls-overlay', 'standalone'],
+    dir: 'ltr',
     background_color: '#0a0e27',
     theme_color: '#1a237e',
     orientation: 'portrait',
@@ -25,6 +28,19 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
+    // Screenshots pour les stores (PWA Builder). Ajouter des PNG 1280x720+ dans public/screenshots/
+    screenshots: [
+      {
+        src: '/screenshots/app.png',
+        sizes: '1280x720',
+        type: 'image/png',
+        label: 'Legrinpo - Discussions',
+      },
+    ],
+    prefer_related_applications: false,
+    related_applications: [],
+    // Âge cible (stores) : obtenir un certificat IARC sur https://www.globalratings.com/
+    // puis ajouter ici : iarc_rating_id: 'votre-uuid-iacr',
     categories: ['social', 'productivity'],
     lang: 'fr',
   };
