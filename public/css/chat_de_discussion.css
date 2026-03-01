@@ -150,9 +150,15 @@ body {
     color: var(--text-muted);
 }
 
-/* Container principal */
+/* Container principal — fixe en pleine vue pour que header et barre message ne scrollent jamais (mobile + clavier) */
 .chat-main-container {
-    flex: 1;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh; /* hauteur dynamique (clavier mobile) */
+    max-height: 100vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
