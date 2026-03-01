@@ -48,7 +48,7 @@ body {
     position: relative;
 }
 
-/* Header fixe — bien dégagé du haut (barre de statut / encoche) */
+/* Header fixe — safe area uniquement quand fournie (app iOS), sinon padding normal */
 .chat-header-fixed {
     position: fixed;
     top: 0;
@@ -57,7 +57,7 @@ body {
     z-index: 1000;
     text-align: center;
     padding: 20px;
-    padding-top: max(48px, env(safe-area-inset-top, 0px));
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-left: max(12px, env(safe-area-inset-left, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
     background: var(--bg-card);
@@ -169,7 +169,7 @@ body {
 
 .chat-content {
     position: fixed;
-    top: 140px;
+    top: 120px;
     left: 0;
     right: 0;
     bottom: 100px;
@@ -644,7 +644,7 @@ body {
     }
 
     .chat-content {
-        top: 160px;
+        top: 140px;
         bottom: 90px;
     }
 
@@ -680,7 +680,7 @@ body {
     }
 
     .chat-content {
-        top: 170px;
+        top: 150px;
         bottom: 80px;
     }
 
