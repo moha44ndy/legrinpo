@@ -58,7 +58,7 @@ function ChatPageContent() {
   const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
   const [headerAvatarFailed, setHeaderAvatarFailed] = useState(false);
   const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
-  const [visualViewportOffset, setVisualViewportOffset] = useState({ top: 0, bottom: 0 });
+  const [headerViewportTop, setHeaderViewportTop] = useState(0);
 
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
@@ -263,24 +263,6 @@ function ChatPageContent() {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prev;
-    };
-  }, []);
-
-  // Garder le header et la barre de message dans la zone visible quand le clavier s'ouvre (Visual Viewport API)
-  useEffect(() => {
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv) return;
-    const update = () => {
-      const top = vv.offsetTop;
-      const bottom = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
-      setVisualViewportOffset({ top, bottom });
-    };
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
     };
   }, []);
 
@@ -846,16 +828,9 @@ function ChatPageContent() {
       <div className="chat-container">
         <div
           className="chat-content"
-          style={
-            visualViewportOffset.top !== 0 || visualViewportOffset.bottom !== 0
-              ? {
-                  top: visualViewportOffset.top + 72,
-                  bottom: visualViewportOffset.bottom + 80,
-                }
-              : undefined
-          }
+          style={headerViewportTop !== 0 ? { top: headerViewportTop + 72 } : undefined}
         >
-          <div className="chat-header-fixed" style={{ top: visualViewportOffset.top }}>
+          <div className="chat-header-fixed" style={{ top: headerViewportTop }}>
             <div className="chat-header-container chat-header-messenger">
               <a href={returnTo} className="leave-btn" title="Retour" aria-label="Retour">
                 ‹
@@ -1427,7 +1402,7 @@ function ChatPageContent() {
             <div ref={messagesEndRef} style={{ paddingBottom: '40px', minHeight: '40px' }} />
           </div>
 
-        <div className="input-container" style={{ bottom: visualViewportOffset.bottom }}>
+        <div className="input-container">
           {/* Fichiers sélectionnés */}
           {selectedFiles.length > 0 && (
             <div className="selected-files" style={{
