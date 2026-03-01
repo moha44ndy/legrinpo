@@ -58,8 +58,6 @@ function ChatPageContent() {
   const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
   const [headerAvatarFailed, setHeaderAvatarFailed] = useState(false);
   const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
-  const [headerViewportTop, setHeaderViewportTop] = useState(0);
-
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
   
@@ -826,11 +824,8 @@ function ChatPageContent() {
       )}
 
       <div className="chat-container">
-        <div
-          className="chat-content"
-          style={headerViewportTop !== 0 ? { top: headerViewportTop + 72 } : undefined}
-        >
-          <div className="chat-header-fixed" style={{ top: headerViewportTop }}>
+        <div className="chat-content">
+          <div className="chat-header-fixed">
             <div className="chat-header-container chat-header-messenger">
               <a href={returnTo} className="leave-btn" title="Retour" aria-label="Retour">
                 ‹
