@@ -24,8 +24,6 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#1a237e',
     orientation: 'portrait',
     scope: '/',
-    // Autres origines autorisées (ex. sous-domaines). Vide = uniquement cette origine.
-    scope_extensions: [] as { origin: string; type: string }[],
     icons: [
       {
         src: '/icons/icon-192.png',
@@ -59,7 +57,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     launch_handler: {
       client_mode: 'focus-existing',
-    } as { platform?: string; url?: string; client_mode?: string },
+    } as MetadataRoute.Manifest['launch_handler'],
     categories: ['social', 'productivity'],
     lang: 'fr',
   };
