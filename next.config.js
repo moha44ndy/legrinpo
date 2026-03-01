@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      // Pour les outils/stores qui exigent exactement /manifest.json
+      { source: '/manifest.json', destination: '/manifest.webmanifest' },
+    ]
+  },
 }
 
 // PWA (service worker) — optionnel : npm install @ducanh2912/next-pwa
