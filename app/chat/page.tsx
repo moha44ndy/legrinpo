@@ -91,19 +91,29 @@ function ChatPageContent() {
   
   // Tous les useEffect doivent être appelés avant tout return conditionnel
 
-  // En app Capacitor : forcer le rechargement du CSS chat (contourner le cache du WebView)
+  // En app Capacitor : correctif de placement uniquement (header + barre message), sans toucher au reste du style
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as { Capacitor?: unknown }).Capacitor) {
-      const v = 2;
-      const href = `/css/chat_de_discussion.css?v=${v}`;
-      const existing = document.querySelector(`link[href^="/css/chat_de_discussion.css"]`);
-      if (!existing?.getAttribute('href')?.includes(`v=${v}`)) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        document.head.appendChild(link);
+    if (typeof window === 'undefined' || !(window as { Capacitor?: unknown }).Capacitor) return;
+    const id = 'chat-capacitor-placement-patch';
+    if (document.getElementById(id)) return;
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = `
+      .chat-header-fixed {
+        padding-top: max(48px, env(safe-area-inset-top, 0px)) !important;
+        padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
       }
-    }
+      .chat-content { top: 140px !important; }
+      .input-container {
+        padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
+      }
+      .leave-btn { left: max(12px, env(safe-area-inset-left, 0px)) !important; }
+      .status-indicator { right: max(12px, env(safe-area-inset-right, 0px)) !important; }
+    `;
+    document.head.appendChild(style);
   }, []);
 
   useEffect(() => {
