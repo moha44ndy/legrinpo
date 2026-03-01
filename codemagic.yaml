@@ -18,10 +18,12 @@ workflows:
     scripts:
       - name: Install npm dependencies
         script: npm ci
-      # - name: Build web + sync Capacitor
-      #   script: |
-      #     npm run build
-      #     npx cap sync ios
+      - name: Build web + sync Capacitor
+        script: |
+          export CAPACITOR_BUILD=1
+          npm run build
+          rm -rf cap-web && mkdir -p cap-web && cp -r out/* cap-web/
+          npx cap sync ios
       - name: Install CocoaPods
         script: cd ios/App && pod install && cd ../..
       - name: Set up code signing
