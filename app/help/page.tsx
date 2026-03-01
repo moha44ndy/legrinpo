@@ -103,6 +103,8 @@ export default function HelpPage() {
         </section>
 
         <p className="help-back">
+          <Link href="/privacy">Politique de confidentialité</Link>
+          {' · '}
           <Link href="/canaldiscussion">← Retour aux canaux</Link>
         </p>
       </div>

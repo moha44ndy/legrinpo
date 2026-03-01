@@ -124,3 +124,26 @@ body {
 .help-back a:hover {
     text-decoration: underline;
 }
+
+/* Page Politique de confidentialité /privacy */
+.privacy-page .help-section p {
+    margin-bottom: 8px;
+}
+.privacy-page .help-section p:last-of-type {
+    margin-bottom: 0;
+}
+.privacy-list {
+    margin: 8px 0 0 1rem;
+    padding: 0;
+    line-height: 1.6;
+}
+.privacy-list li {
+    margin-bottom: 6px;
+}
+.privacy-link {
+    color: #9fa8da;
+    text-decoration: none;
+}
+.privacy-link:hover {
+    text-decoration: underline;
+}
