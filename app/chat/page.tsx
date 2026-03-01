@@ -1459,7 +1459,7 @@ function ChatPageContent() {
                     {(mediaType === 'document' || mediaType === 'audio' || mediaType === 'unknown') && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px' }}>
                         <span style={{ color: 'rgba(255,255,255,0.9)' }}>
-                          {mediaType === 'image' ? <IconImage size={24} /> : mediaType === 'video' ? <IconVideo size={24} /> : <IconAttachment size={24} />}
+                          <IconAttachment size={24} />
                         </span>
                         <span style={{ fontSize: '0.85rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {file.name}
