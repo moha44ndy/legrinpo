@@ -91,6 +91,21 @@ function ChatPageContent() {
   
   // Tous les useEffect doivent être appelés avant tout return conditionnel
 
+  // En app Capacitor : forcer le rechargement du CSS chat (contourner le cache du WebView)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as { Capacitor?: unknown }).Capacitor) {
+      const v = 2;
+      const href = `/css/chat_de_discussion.css?v=${v}`;
+      const existing = document.querySelector(`link[href^="/css/chat_de_discussion.css"]`);
+      if (!existing?.getAttribute('href')?.includes(`v=${v}`)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!roomId) {
       router.push(returnTo);
