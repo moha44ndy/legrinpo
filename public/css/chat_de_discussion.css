@@ -44,7 +44,7 @@ body {
     overscroll-behavior: contain;
 }
 
-/* Header fixe */
+/* Header fixe — respect des safe areas (encoche, barre de statut) */
 .chat-header-fixed {
     position: fixed;
     top: 0;
@@ -53,6 +53,9 @@ body {
     z-index: 1000;
     text-align: center;
     padding: 20px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
     background: var(--bg-card);
     backdrop-filter: blur(20px);
     border: none;
@@ -379,7 +382,7 @@ body {
     border-left: 3px solid var(--primary-color);
 }
 
-/* Input container */
+/* Input container — respect de la safe area bas (zone d’accueil / barre d’accueil) */
 .input-container {
     position: fixed;
     bottom: 0;
@@ -387,6 +390,9 @@ body {
     right: 0;
     z-index: 999;
     padding: 20px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
     background: var(--bg-card);
     backdrop-filter: blur(20px);
     border-top: 1px solid var(--border-color);
@@ -597,7 +603,8 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
     .chat-header-fixed {
-        padding: 15px 20px;
+        padding: 15px max(20px, env(safe-area-inset-left)) max(15px, env(safe-area-inset-right));
+        padding-top: max(15px, env(safe-area-inset-top));
     }
 
     .chat-header-fixed h1 {
@@ -631,6 +638,9 @@ body {
 
     .input-container {
         padding: 15px;
+        padding-bottom: max(15px, env(safe-area-inset-bottom));
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
     }
 
     .messages {
@@ -645,7 +655,8 @@ body {
 
 @media (max-width: 480px) {
     .chat-header-fixed {
-        padding: 12px 15px;
+        padding: 12px max(15px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+        padding-top: max(12px, env(safe-area-inset-top));
     }
 
     .chat-header-fixed h1 {
@@ -671,6 +682,9 @@ body {
 
     .input-container {
         padding: 12px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
     }
 
     .message-input {
