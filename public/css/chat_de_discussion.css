@@ -84,7 +84,7 @@ body {
 .leave-btn {
     position: absolute;
     top: 50%;
-    left: 25px;
+    left: max(12px, env(safe-area-inset-left, 0px));
     transform: translateY(-50%);
     background: rgba(30, 64, 175, 0.2);
     border: 1px solid var(--border-color);
