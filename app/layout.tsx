@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: 'Legrinpo - Discussions',
   description: 'Plateforme de discussion et de coordination en temps réel - Legrinpo',
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/logo_legrinpo.jpeg' },
+  icons: { icon: '/icons/favicon.svg', apple: '/icons/favicon.svg' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -36,7 +36,6 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://www.highperformanceformat.com" />
         <link rel="preconnect" href="https://pl28769355.effectivegatecpm.com" />
-        <link rel="apple-touch-icon" href="/logo_legrinpo.jpeg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
