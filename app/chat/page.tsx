@@ -657,7 +657,13 @@ function ChatPageContent() {
           <button type="button" className="chat-image-modal-close" onClick={() => setDocumentModal(null)} aria-label="Fermer">×</button>
           <div className="chat-document-modal-content" onClick={(e) => e.stopPropagation()}>
             <iframe src={documentModal.url} title={documentModal.name} className="chat-document-modal-iframe" />
-            <a href={documentModal.url} target="_blank" rel="noopener noreferrer" className="chat-document-modal-open-tab" onClick={(e) => e.stopPropagation()}>
+            <a
+              href={documentModal.url}
+              target={typeof window !== 'undefined' && (window as { Capacitor?: unknown }).Capacitor ? '_self' : '_blank'}
+              rel="noopener noreferrer"
+              className="chat-document-modal-open-tab"
+              onClick={(e) => e.stopPropagation()}
+            >
               Ouvrir dans un nouvel onglet
             </a>
           </div>
