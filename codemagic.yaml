@@ -1,24 +1,42 @@
 workflows:
   ios-workflow:
-    name: iOS Workflow
+    name: iOS Workflow (Legrinpo)
     max_build_duration: 120
+    instance_type: mac_mini_m2
     integrations:
       app_store_connect: Codemagic
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.legrinpo.app
+      vars:
+        # Projet Capacitor : le workspace iOS est toujours dans ios/App/
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      xcode: latest
+      cocoapods: default
     scripts:
-      - name: Build iOS
+      - name: Install npm dependencies
+        script: npm ci
+      # - name: Build web + sync Capacitor
+      #   script: |
+      #     npm run build
+      #     npx cap sync ios
+      - name: Install CocoaPods
+        script: cd ios/App && pod install && cd ../..
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Build IPA
         script: |
-          xcode-project use-profiles
-          xcodebuild -workspace "src/legrinpo.xcworkspace" \
-            -scheme "legrinpo" \
-            -configuration Release \
-            -archivePath build/legrinpo.xcarchive \
-            archive
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
     artifacts:
-      - build/legrinpo.xcarchive
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
         auth: integration
+        submit_to_testflight: true
+        beta_groups: []
+        submit_to_app_store: false
