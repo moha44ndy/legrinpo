@@ -697,7 +697,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: max(1rem, env(safe-area-inset-top, 44px)) max(1rem, env(safe-area-inset-right, 0)) max(1rem, env(safe-area-inset-bottom, 0)) max(1rem, env(safe-area-inset-left, 0));
 }
 
 .admin-modal {

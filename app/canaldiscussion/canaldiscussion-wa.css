@@ -16,10 +16,13 @@
     flex-direction: column;
 }
 
-/* Header */
+/* Header — safe areas (barre de statut) */
 .wa-header {
     background: #1a1f3a;
     padding: 12px 16px 8px;
+    padding-top: max(12px, env(safe-area-inset-top, 44px));
+    padding-left: max(16px, env(safe-area-inset-left, 0));
+    padding-right: max(16px, env(safe-area-inset-right, 0));
     border-bottom: 1px solid rgba(74, 158, 255, 0.2);
 }
 
@@ -475,7 +478,7 @@
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* Modals */
+/* Modals — safe areas */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -488,7 +491,7 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 20px;
+    padding: max(20px, env(safe-area-inset-top, 44px)) max(20px, env(safe-area-inset-right, 0)) max(20px, env(safe-area-inset-bottom, 0)) max(20px, env(safe-area-inset-left, 0));
 }
 
 .modal-content {

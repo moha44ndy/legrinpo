@@ -19,27 +19,26 @@ html {
 
 body {
     margin: 0;
-    padding: 0;
     width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: hidden;
     background: #0a0e27;
     color: #ffffff;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: max(0px, env(safe-area-inset-top, 44px)) env(safe-area-inset-right, 0) max(0px, env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
 }
 
-body {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* Page Aide /help */
+/* Page Aide /help — safe areas */
 .help-page {
     min-height: 100vh;
     background: #0a0e27;
     color: #e0e0e0;
     padding: 24px 16px;
+    padding-top: max(24px, env(safe-area-inset-top, 44px));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0));
+    padding-left: max(16px, env(safe-area-inset-left, 0));
+    padding-right: max(16px, env(safe-area-inset-right, 0));
 }
 .help-page-inner {
     max-width: 560px;
