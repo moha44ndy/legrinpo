@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,6 +7,14 @@ const nextConfig = {
     return [
       { source: '/manifest.json', destination: '/manifest.webmanifest' },
     ]
+  },
+  webpack(config, { isServer }) {
+    // En build web (Vercel / PWA), on remplace le plugin natif AdMob
+    // par un stub côté navigateur, pour éviter l'erreur "module not found"
+    if (!isServer) {
+      config.resolve.alias['@capacitor-community/admob'] = path.resolve(__dirname, 'stubs/admob-web-stub.ts')
+    }
+    return config
   },
 }
 
