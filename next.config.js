@@ -8,12 +8,14 @@ const nextConfig = {
       { source: '/manifest.json', destination: '/manifest.webmanifest' },
     ]
   },
-  webpack(config, { isServer }) {
-    // En build web (Vercel / PWA), on remplace le plugin natif AdMob
-    // par un stub côté navigateur, pour éviter l'erreur "module not found"
-    if (!isServer) {
-      config.resolve.alias['@capacitor-community/admob'] = path.resolve(__dirname, 'stubs/admob-web-stub.ts')
-    }
+  webpack(config) {
+    // Dans tous les builds (dev, prod, server, client), on remplace
+    // le plugin natif AdMob par un stub web pour éviter les erreurs
+    // "module not found" dans Next.js.
+    config.resolve.alias['@capacitor-community/admob'] = path.resolve(
+      __dirname,
+      'stubs/admob-web-stub.ts',
+    )
     return config
   },
 }
