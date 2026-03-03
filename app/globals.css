@@ -39,6 +39,126 @@ body {
     padding-bottom: max(24px, env(safe-area-inset-bottom, 0));
     padding-left: max(16px, env(safe-area-inset-left, 0));
     padding-right: max(16px, env(safe-area-inset-right, 0));
+    box-sizing: border-box;
+}
+
+/* ... existing CSS omitted for brevity ... */
+
+/* Écran de chargement d'entrée de l'app */
+.app-loading-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #1f2937 0%, #020617 55%, #000 100%);
+    color: #ffffff;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+.app-loading-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.app-loading-logo {
+    width: 96px;
+    height: 96px;
+    border-radius: 24px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+    animation: app-loading-pulse 1.5s ease-in-out infinite;
+}
+
+.app-loading-logo img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    border-radius: 18px;
+}
+
+.app-loading-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: app-loading-title-fade 0.7s ease-out forwards;
+    animation-delay: 0.2s;
+}
+
+.app-loading-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+@keyframes app-loading-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 12px rgba(74, 158, 255, 0.25);
+    }
+    50% {
+        transform: scale(1.06);
+        box-shadow: 0 0 20px rgba(74, 158, 255, 0.5);
+    }
+}
+
+@keyframes app-loading-title-fade {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@import url('/css/styles-canaldiscussion.css');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    background: #0a0e27;
+    color: #ffffff;
+    padding: max(0px, env(safe-area-inset-top, 44px)) env(safe-area-inset-right, 0) max(0px, env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
+}
+
+/* Page Aide /help — safe areas */
+.help-page {
+    min-height: 100vh;
+    background: #0a0e27;
+    color: #e0e0e0;
+    padding: 24px 16px;
+    padding-top: max(24px, env(safe-area-inset-top, 44px));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0));
+    padding-left: max(16px, env(safe-area-inset-left, 0));
+    padding-right: max(16px, env(safe-area-inset-right, 0));
 }
 .help-page-inner {
     max-width: 560px;

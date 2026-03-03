@@ -93,7 +93,33 @@ export default function PrivacyPage() {
         </section>
 
         <section className="help-section">
-          <h2>9. Modifications</h2>
+          <h2>9. Règles d&apos;utilisation et comportement</h2>
+          <p>
+            Pour que Legrinpo reste un espace sûr et respectueux, vous vous engagez à ne pas tenir de propos haineux, violents,
+            discriminatoires ou diffamatoires, ni harceler ou intimider d&apos;autres personnes. Il est interdit de partager des
+            contenus illégaux, dangereux ou à caractère sexuel impliquant des mineurs.
+          </p>
+          <p>
+            Vous vous engagez également à respecter la vie privée des autres membres : ne publiez pas de données personnelles
+            (adresse, numéro de téléphone, documents, etc.) sans leur accord, et n&apos;usurpez pas l&apos;identité d&apos;une
+            autre personne ou organisation.
+          </p>
+          <p>
+            Le portefeuille Legrinpo sert uniquement à gérer des montants liés à l&apos;utilisation de la plateforme et à des
+            retraits vers des moyens de paiement externes (Wave, Orange Money, compte bancaire, etc.). Aucun achat de contenus
+            purement numériques ou d&apos;avantages dans l&apos;application n&apos;est effectué via le portefeuille.
+          </p>
+          <p>
+            Vous pouvez signaler un message ou un comportement inapproprié via la fonction de signalement disponible dans le chat,
+            ou via la page Aide. L&apos;équipe Legrinpo se réserve le droit de supprimer des contenus, de restreindre l&apos;accès
+            à un salon ou de suspendre un compte en cas de non-respect de ces règles. Vous pouvez supprimer votre compte à tout
+            moment depuis l&apos;application ; la suppression entraîne la fermeture de votre compte et la suppression ou
+            l&apos;anonymisation des données vous concernant, conformément à la présente politique.
+          </p>
+        </section>
+
+        <section className="help-section">
+          <h2>10. Modifications</h2>
           <p>
             Nous pouvons mettre à jour cette politique. La date de dernière mise à jour sera indiquée en tête de page. Une modification
             importante vous sera signalée, le cas échéant, par e-mail ou dans l&apos;application. La poursuite de l&apos;utilisation
@@ -102,7 +128,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="help-section">
-          <h2>10. Nous contacter</h2>
+          <h2>11. Nous contacter</h2>
           <p>
             Pour toute question sur vos données ou cette politique :{' '}
             <a href="mailto:legrinpo@gmail.com" className="privacy-link">legrinpo@gmail.com</a>. Vous pouvez aussi utiliser la page{' '}

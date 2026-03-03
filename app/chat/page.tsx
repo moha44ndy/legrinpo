@@ -559,6 +559,37 @@ function ChatPageContent() {
     setMessageMenuPosition(null);
   };
 
+  const handleReportMessage = async (message: any) => {
+    try {
+      if (!roomId) {
+        setBannerMessage({ type: 'error', text: 'Salle inconnue pour ce message.' });
+        return;
+      }
+      const res = await fetch('/api/moderation/report-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          messageId: message.id,
+          messageText: message.text || '',
+          authorId: message.userId || null,
+          authorName: message.username || '',
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBannerMessage({ type: 'error', text: data.error || 'Erreur lors de l\'envoi du signalement.' });
+      } else {
+        setBannerMessage({ type: 'success', text: 'Signalement envoyé à la modération.' });
+      }
+    } catch {
+      setBannerMessage({ type: 'error', text: 'Erreur lors de l\'envoi du signalement.' });
+    } finally {
+      setClickedMessageId(null);
+      setMessageMenuPosition(null);
+    }
+  };
+
   const handleReply = (message: any) => {
     // Préremplir le champ de saisie avec une mention
     setMessageInput(`@${message.username} `);
@@ -1375,6 +1406,15 @@ function ChatPageContent() {
                             >
                               <span>Copier le texte</span>
                             </button>
+                          <button
+                            className="context-menu-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReportMessage(message);
+                            }}
+                          >
+                            <span>Signaler ce message</span>
+                          </button>
                             {isOwn && (
                               <button
                                 className="context-menu-item context-menu-item-danger"

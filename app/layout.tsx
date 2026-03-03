@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SyncRegistration } from '@/components/SyncRegistration'
+import { AdMobBanner } from '@/components/AdMobBanner'
+import { SwipeBack } from '@/components/SwipeBack'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -51,6 +53,8 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <SyncRegistration />
+          <AdMobBanner />
+          <SwipeBack />
           {children}
         </AuthProvider>
       </body>

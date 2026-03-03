@@ -65,6 +65,16 @@ export default function HelpPage() {
         </section>
 
         <section className="help-section">
+          <h2>Règles d&apos;utilisation</h2>
+          <p>
+            Legrinpo est un espace de discussion respectueux. Les propos haineux, violents, discriminatoires ou illégaux sont
+            interdits. Vous pouvez signaler un message inapproprié directement depuis le chat (menu du message &quot;Signaler ce
+            message&quot;) ou via le formulaire ci-dessous. En cas de non-respect, nous pouvons supprimer des contenus ou
+            suspendre un compte.
+          </p>
+        </section>
+
+        <section className="help-section">
           <h2>Nous contacter</h2>
           {sent ? (
             <div className="help-success">

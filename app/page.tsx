@@ -19,15 +19,13 @@ export default function HomePage() {
   }, [user, loading, router]);
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      background: '#0a0e27',
-      color: '#ffffff'
-    }}>
-      Chargement...
+    <div className="app-loading-screen">
+      <div className="app-loading-inner">
+        <div className="app-loading-logo">
+          <img src="/logo_legrinpo.jpeg" alt="Legrinpo" />
+        </div>
+        <div className="app-loading-title">Legrinpo</div>
+      </div>
     </div>
   );
 }

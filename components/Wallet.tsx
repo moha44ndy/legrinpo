@@ -114,6 +114,25 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
     );
   }
 
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.'
+    );
+    if (!confirmed) return;
+    try {
+      const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Erreur lors de la suppression du compte.');
+        return;
+      }
+      await logout();
+      router.push('/login');
+    } catch (e: any) {
+      alert(e?.message || 'Erreur lors de la suppression du compte.');
+    }
+  };
+
   return (
     <>
       <div className={`wallet-container-compact${isExpanded ? ' wallet-container-expanded' : ''}`}>
@@ -560,6 +579,13 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
               >
                 Changer mon mot de passe
               </Link>
+              <button
+                type="button"
+                className="wallet-settings-link wallet-settings-link-danger"
+                onClick={handleDeleteAccount}
+              >
+                Supprimer mon compte
+              </button>
             </div>
           </div>
         </div>
