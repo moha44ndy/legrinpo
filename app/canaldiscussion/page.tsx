@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Wallet from '@/components/Wallet';
-import { IconGlobeAlt } from '@/components/Icons';
+import { IconGlobeAlt, IconMoreVertical } from '@/components/Icons';
 import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
@@ -36,6 +36,7 @@ export default function CanalDiscussionPage() {
   const [adCanalNativeHtml, setAdCanalNativeHtml] = useState<string>('');
   const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({ ad: false, discussions: false });
   const [categoriesCanal, setCategoriesCanal] = useState<{ id: string; name: string; order: number }[]>([]);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const adBarRef = useRef<HTMLDivElement>(null);
   const adNativeBarRef = useRef<HTMLDivElement>(null);
 
@@ -290,10 +291,25 @@ export default function CanalDiscussionPage() {
       <header className="wa-header">
         <div className="header-top">
           <h1 className="header-title">Discussions</h1>
-          <div className="header-actions">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {userId && <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />}
-            </div>
+          <div className="header-title-row">
+            {userId && (
+              <Wallet
+                userId={userId}
+                username={username}
+                userEmail={user?.email || userProfile?.email}
+                showTrigger={true}
+                openInModal={walletModalOpen}
+                onCloseModal={() => setWalletModalOpen(false)}
+              />
+            )}
+            <button
+              type="button"
+              className="header-menu-dots"
+              onClick={() => setWalletModalOpen(true)}
+              aria-label="Ouvrir le portefeuille"
+            >
+              <IconMoreVertical size={22} />
+            </button>
           </div>
         </div>
         <div className="ad-bar">

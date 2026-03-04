@@ -236,6 +236,10 @@ body {
 .help-back {
     margin-top: 32px;
 }
+.help-back-top {
+    margin-top: 0;
+    margin-bottom: 20px;
+}
 .help-back a {
     color: #9fa8da;
     text-decoration: none;

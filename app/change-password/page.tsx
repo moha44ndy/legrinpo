@@ -63,6 +63,9 @@ export default function ChangePasswordPage() {
     return (
       <div className="auth-container">
         <div className="auth-card">
+          <p className="auth-back-top">
+            <Link href="/settings">← Retour</Link>
+          </p>
           <div className="auth-header">
             <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Paramètres</h1>
             <p>Chargement...</p>
@@ -75,6 +78,9 @@ export default function ChangePasswordPage() {
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <p className="auth-back-top">
+          <Link href="/settings">← Retour</Link>
+        </p>
         <div className="auth-header">
           <h1><IconWallet size={28} style={{ verticalAlign: 'middle', marginRight: 8 }} /> Changer mon mot de passe</h1>
           <p>Indiquez votre mot de passe actuel puis le nouveau (au moins 6 caractères)</p>
@@ -133,8 +139,6 @@ export default function ChangePasswordPage() {
 
         <div className="auth-footer">
           <p>
-            <Link href="/canaldiscussion" className="auth-link">Retour à l&apos;accueil</Link>
-            <span className="auth-sep">|</span>
             <Link href="/forgot-password" className="auth-link">Mot de passe oublié</Link>
           </p>
         </div>

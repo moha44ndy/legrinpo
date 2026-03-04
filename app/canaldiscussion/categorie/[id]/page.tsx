@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Wallet from '@/components/Wallet';
-import { IconGlobeAlt, IconArrowLeft } from '@/components/Icons';
+import { IconGlobeAlt, IconArrowLeft, IconMoreVertical } from '@/components/Icons';
 import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -34,6 +34,7 @@ export default function CanalCategoriePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
   const adBarRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -183,10 +184,25 @@ export default function CanalCategoriePage() {
       <header className="wa-header">
         <div className="header-top">
           <h1 className="header-title">{categoryName || '…'}</h1>
-          <div className="header-actions">
+          <div className="header-title-row">
             {userId && (
-              <Wallet userId={userId} username={username} userEmail={user?.email || userProfile?.email} />
+              <Wallet
+                userId={userId}
+                username={username}
+                userEmail={user?.email || userProfile?.email}
+                showTrigger={true}
+                openInModal={walletModalOpen}
+                onCloseModal={() => setWalletModalOpen(false)}
+              />
             )}
+            <button
+              type="button"
+              className="header-menu-dots"
+              onClick={() => setWalletModalOpen(true)}
+              aria-label="Ouvrir le portefeuille"
+            >
+              <IconMoreVertical size={22} />
+            </button>
           </div>
         </div>
       </header>

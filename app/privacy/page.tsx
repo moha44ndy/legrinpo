@@ -6,6 +6,9 @@ export default function PrivacyPage() {
   return (
     <main className="help-page privacy-page">
       <div className="help-page-inner">
+        <p className="help-back help-back-top">
+          <Link href="/settings">← Retour</Link>
+        </p>
         <h1>Politique de confidentialité</h1>
         <p className="help-intro">
           Dernière mise à jour : mars 2025. Legrinpo (&quot;nous&quot;) s&apos;engage à protéger vos données personnelles.
@@ -136,9 +139,6 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <p className="help-back">
-          <Link href="/canaldiscussion">← Retour aux canaux</Link>
-        </p>
       </div>
     </main>
   );

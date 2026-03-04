@@ -153,6 +153,22 @@
     text-decoration: underline;
 }
 
+.auth-back-top {
+    margin: 0 0 20px 0;
+    font-size: 15px;
+}
+
+.auth-back-top a {
+    color: #4a9eff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-back-top a:hover {
+    color: #64b5f6;
+    text-decoration: underline;
+}
+
 .auth-code-message {
     color: rgba(255, 255, 255, 0.85);
     font-size: 14px;

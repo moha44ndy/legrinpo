@@ -1,0 +1,163 @@
+/* Page Paramètres — pleine page, même style que Aide / Politique */
+
+.settings-page .settings-back {
+  margin-bottom: 20px;
+}
+
+.settings-page .settings-back a {
+  color: #9fa8da;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.settings-page .settings-back a:hover {
+  text-decoration: underline;
+}
+
+.settings-section {
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(159, 168, 218, 0.2);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section h2 {
+  margin-bottom: 14px;
+}
+
+/* Bloc pseudo */
+.settings-username-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.settings-username-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 158, 255, 0.35);
+  background: rgba(26, 35, 126, 0.15);
+  color: #e0e0e0;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-username-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.settings-username-input:focus {
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+}
+
+.settings-username-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.settings-error {
+  margin-top: 10px;
+  margin-bottom: 0;
+  color: #f48fb1;
+  font-size: 0.9rem;
+}
+
+/* Boutons */
+.settings-btn {
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, filter 0.2s;
+  font-family: inherit;
+}
+
+.settings-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.settings-btn-primary {
+  background: #3949ab;
+  color: #fff;
+}
+
+.settings-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.settings-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.settings-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.settings-btn-danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.settings-btn-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* Liste de liens */
+.settings-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-link-list li {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid rgba(159, 168, 218, 0.12);
+}
+
+.settings-link-list li:last-child {
+  border-bottom: none;
+}
+
+.settings-link {
+  display: block;
+  padding: 14px 0;
+  color: #9fa8da;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: color 0.2s, padding-left 0.2s;
+}
+
+.settings-link:hover {
+  color: #c5cae9;
+  padding-left: 4px;
+}
+
+/* Zone danger */
+.settings-danger-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-danger-actions .settings-btn {
+  width: 100%;
+  text-align: center;
+}

@@ -4,14 +4,19 @@ import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { IconWallet, IconRefresh, IconWithdraw, IconCheck, IconPlus, IconEdit, IconTrash } from '@/components/Icons';
+import { IconWallet, IconWithdraw, IconCheck, IconPlus, IconTrash } from '@/components/Icons';
 import './Wallet.css';
 
 interface WalletProps {
   userId: string;
   username?: string;
   userEmail?: string;
+  /** Afficher le trigger compact (pill) dans le header. Si false, seul le modal peut ouvrir les détails. */
+  showTrigger?: boolean;
+  /** Quand true, affiche les détails du wallet dans un vrai modal (overlay). */
+  openInModal?: boolean;
+  /** Callback pour fermer le modal (quand openInModal est contrôlé par le parent). */
+  onCloseModal?: () => void;
 }
 
 type WithdrawMethod = 'wave' | 'orange_money' | 'moov_money' | 'mtn_money' | 'carte_bancaire';
@@ -43,16 +48,17 @@ const WITHDRAW_COUNTRIES = [
 
 const MIN_WITHDRAWAL = 5000;
 
-export default function Wallet({ userId, username, userEmail }: WalletProps) {
+export default function Wallet({ userId, username, userEmail, showTrigger = true, openInModal = false, onCloseModal }: WalletProps) {
   // Ne pas afficher si userId n'est pas disponible
   if (!userId) {
     console.warn('Wallet: userId non disponible');
     return null;
   }
 
-  const { wallet, balance, loading, error, refreshBalance } = useWallet(userId);
-  const { userProfile, updateUserProfile, logout } = useAuth();
-  const router = useRouter();
+  const closeDetails = openInModal ? (onCloseModal ?? (() => {})) : () => setIsExpanded(false);
+
+  const { wallet, balance, loading, error } = useWallet(userId);
+  const { userProfile, updateUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -74,13 +80,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
   const [helpSubmitting, setHelpSubmitting] = useState(false);
   const [helpError, setHelpError] = useState<string | null>(null);
   const [helpForm, setHelpForm] = useState({ subject: '', message: '' });
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [editingUsername, setEditingUsername] = useState(false);
-  const [editUsernameValue, setEditUsernameValue] = useState('');
-  const [usernameEditError, setUsernameEditError] = useState<string | null>(null);
-  const [usernameEditSaving, setUsernameEditSaving] = useState(false);
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
 
   const isBankCard = withdrawForm.method === 'carte_bancaire';
@@ -114,275 +114,147 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
     );
   }
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.'
-    );
-    if (!confirmed) return;
-    try {
-      const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Erreur lors de la suppression du compte.');
-        return;
-      }
-      await logout();
-      router.push('/login');
-    } catch (e: any) {
-      alert(e?.message || 'Erreur lors de la suppression du compte.');
-    }
-  };
+  const showDetailsInDropdown = isExpanded && wallet && !openInModal;
+  const showDetailsInModal = openInModal && wallet;
+
+  const walletDetailsContent = (
+    <>
+      {(username || userProfile?.username) && (
+        <p className="wallet-details-username">
+          <span className="wallet-avatar-wrap">
+            {userProfile?.avatar && !avatarImgFailed ? (
+              <button
+                type="button"
+                className="wallet-avatar-preview-trigger"
+                onClick={() => setShowAvatarPreview(true)}
+                title="Voir en grand"
+              >
+                <img
+                  key={userProfile.avatar}
+                  src={userProfile.avatar}
+                  alt=""
+                  className="wallet-avatar-details wallet-avatar-img"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarImgFailed(true)}
+                />
+              </button>
+            ) : (
+              <span className="wallet-avatar-details">{(userProfile?.username || username || '').charAt(0).toUpperCase() || '?'}</span>
+            )}
+            <label className="wallet-avatar-plus-wrap" title="Changer la photo de profil">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                className="wallet-avatar-input"
+                disabled={avatarUploading}
+                aria-label="Changer la photo de profil"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !userId) return;
+                  setAvatarError(null);
+                  setAvatarUploading(true);
+                  const timeoutMs = 20000;
+                  const timeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error('Délai dépassé. Vérifiez votre connexion.')), timeoutMs);
+                  });
+                  try {
+                    const formData = new FormData();
+                    formData.append('avatar', file);
+                    const res = await Promise.race([
+                      fetch('/api/profile/avatar', { method: 'POST', body: formData }),
+                      timeoutPromise,
+                    ]);
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      setAvatarError(data.error || 'Erreur lors de l\'upload.');
+                      return;
+                    }
+                    if (data.avatar) {
+                      await updateUserProfile({ avatar: data.avatar });
+                    } else if (data.user?.avatar) {
+                      await updateUserProfile({ avatar: data.user.avatar });
+                    }
+                  } catch (err: any) {
+                    setAvatarError(err?.message || 'Erreur lors de l\'upload.');
+                  } finally {
+                    setAvatarUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <span className="wallet-avatar-plus" aria-hidden="true"><IconPlus size={10} /></span>
+            </label>
+            {avatarUploading && (
+              <span className="wallet-avatar-loading" aria-hidden="true">
+                <span className="wallet-avatar-spinner" />
+              </span>
+            )}
+          </span>
+          <span className="wallet-details-username-text">
+            {(userProfile?.username || username || '').toUpperCase()}
+          </span>
+          {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
+            <span className="wallet-admin-badge" title="Compte administrateur">Admin</span>
+          )}
+        </p>
+      )}
+      {avatarError && <p className="wallet-avatar-error">{avatarError}</p>}
+      <button
+        className="wallet-withdraw-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          setWithdrawSent(false);
+          setWithdrawError(null);
+          requestAnimationFrame(() => setShowWithdrawModal(true));
+        }}
+      >
+        <IconWithdraw size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Retirer mon argent
+      </button>
+      <Link
+        href="/settings"
+        className="wallet-settings-btn"
+        onClick={(e) => { e.stopPropagation(); closeDetails(); }}
+      >
+        Paramètres
+      </Link>
+      {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
+        <Link
+          href="/admin"
+          className="wallet-admin-btn"
+          onClick={(e) => { e.stopPropagation(); closeDetails(); }}
+        >
+          Dashboard admin
+        </Link>
+      )}
+    </>
+  );
 
   return (
     <>
-      <div className={`wallet-container-compact${isExpanded ? ' wallet-container-expanded' : ''}`}>
-        <div 
-          className="wallet-header-compact"
-          onClick={() => setIsExpanded(!isExpanded)}
-          title="Cliquez pour voir les détails"
-        >
-          <IconWallet size={14} className="wallet-icon-compact" />
-          {username && <span className="wallet-username-compact">{username.toUpperCase()}</span>}
-          <span className="wallet-balance-compact">{balance.toFixed(2)} FCFA</span>
-        </div>
-        
-        {isExpanded && wallet && (
-          <div className="wallet-details">
-          {(username || userProfile?.username) && (
-            <p className="wallet-details-username">
-              <span className="wallet-avatar-wrap">
-                {userProfile?.avatar && !avatarImgFailed ? (
-                  <button
-                    type="button"
-                    className="wallet-avatar-preview-trigger"
-                    onClick={() => setShowAvatarPreview(true)}
-                    title="Voir en grand"
-                  >
-                    <img
-                      key={userProfile.avatar}
-                      src={userProfile.avatar}
-                      alt=""
-                      className="wallet-avatar-details wallet-avatar-img"
-                      referrerPolicy="no-referrer"
-                      onError={() => setAvatarImgFailed(true)}
-                    />
-                  </button>
-                ) : (
-                  <span className="wallet-avatar-details">{(userProfile?.username || username || '').charAt(0).toUpperCase() || '?'}</span>
-                )}
-                <label className="wallet-avatar-plus-wrap" title="Changer la photo de profil">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    className="wallet-avatar-input"
-                    disabled={avatarUploading}
-                    aria-label="Changer la photo de profil"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !userId) return;
-                      setAvatarError(null);
-                      setAvatarUploading(true);
-                      const timeoutMs = 20000;
-                      const timeoutPromise = new Promise<never>((_, reject) => {
-                        setTimeout(() => reject(new Error('Délai dépassé. Vérifiez votre connexion.')), timeoutMs);
-                      });
-                      try {
-                        const formData = new FormData();
-                        formData.append('avatar', file);
-                        const res = await Promise.race([
-                          fetch('/api/profile/avatar', { method: 'POST', body: formData }),
-                          timeoutPromise,
-                        ]);
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok) {
-                          setAvatarError(data.error || 'Erreur lors de l\'upload.');
-                          return;
-                        }
-                        if (data.avatar) {
-                          await updateUserProfile({ avatar: data.avatar });
-                        } else if (data.user?.avatar) {
-                          await updateUserProfile({ avatar: data.user.avatar });
-                        }
-                      } catch (err: any) {
-                        setAvatarError(err?.message || 'Erreur lors de l\'upload.');
-                      } finally {
-                        setAvatarUploading(false);
-                        e.target.value = '';
-                      }
-                    }}
-                  />
-                  <span className="wallet-avatar-plus" aria-hidden="true"><IconPlus size={10} /></span>
-                </label>
-                {avatarUploading && (
-                  <span className="wallet-avatar-loading" aria-hidden="true">
-                    <span className="wallet-avatar-spinner" />
-                  </span>
-                )}
-              </span>
-              {editingUsername ? (
-                <span className="wallet-username-edit-wrap">
-                  <input
-                    type="text"
-                    className="wallet-username-edit-input"
-                    value={editUsernameValue}
-                    onChange={(e) => {
-                      setEditUsernameValue(e.target.value);
-                      setUsernameEditError(null);
-                    }}
-                    placeholder="Nouveau pseudo (min. 3 caractères)"
-                    disabled={usernameEditSaving}
-                    autoFocus
-                    maxLength={50}
-                    aria-label="Nouveau nom d’utilisateur"
-                  />
-                  <button
-                    type="button"
-                    className="wallet-username-edit-btn wallet-username-edit-save"
-                    onClick={async () => {
-                      const val = editUsernameValue.trim();
-                      if (val.length < 3) {
-                        setUsernameEditError('Au moins 3 caractères.');
-                        return;
-                      }
-                      setUsernameEditError(null);
-                      setUsernameEditSaving(true);
-                      try {
-                        await updateUserProfile({ username: val });
-                        setEditingUsername(false);
-                        setEditUsernameValue('');
-                      } catch (err: any) {
-                        setUsernameEditError(err?.message || 'Erreur.');
-                      } finally {
-                        setUsernameEditSaving(false);
-                      }
-                    }}
-                    disabled={usernameEditSaving}
-                  >
-                    OK
-                  </button>
-                  <button
-                    type="button"
-                    className="wallet-username-edit-btn wallet-username-edit-cancel"
-                    onClick={() => {
-                      setEditingUsername(false);
-                      setEditUsernameValue('');
-                      setUsernameEditError(null);
-                    }}
-                    disabled={usernameEditSaving}
-                  >
-                    Annuler
-                  </button>
-                </span>
-              ) : (
-                <>
-                  <span className="wallet-details-username-text">
-                    {(userProfile?.username || username || '').toUpperCase()}
-                  </span>
-                  {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
-                    <span className="wallet-admin-badge" title="Compte administrateur">Admin</span>
-                  )}
-                  <button
-                    type="button"
-                    className="wallet-username-edit-pencil"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditUsernameValue(userProfile?.username || username || '');
-                      setUsernameEditError(null);
-                      setEditingUsername(true);
-                    }}
-                    title="Modifier le pseudo"
-                    aria-label="Modifier le pseudo"
-                  >
-                    <IconEdit size={14} />
-                  </button>
-                </>
-              )}
-            </p>
-          )}
-          {usernameEditError && <p className="wallet-avatar-error">{usernameEditError}</p>}
-          {avatarError && <p className="wallet-avatar-error">{avatarError}</p>}
-          <button 
-            className={`wallet-refresh-btn${isRefreshing ? ' wallet-refreshing' : ''}`}
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (isRefreshing) return;
-              setIsRefreshing(true);
-              try {
-                await refreshBalance();
-              } finally {
-                setIsRefreshing(false);
-              }
-            }}
-            disabled={isRefreshing}
-          >
-            <IconRefresh size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Actualiser
-          </button>
-          <button 
-            className="wallet-withdraw-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setWithdrawSent(false);
-              setWithdrawError(null);
-              requestAnimationFrame(() => setShowWithdrawModal(true));
-            }}
-          >
-            <IconWithdraw size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Retirer mon argent
-          </button>
-          <button
-            type="button"
-            className="wallet-settings-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              requestAnimationFrame(() => setShowSettingsModal(true));
-            }}
-          >
-            Paramètres
-          </button>
-          <Link
-            href="/help"
-            className="wallet-help-btn"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Aide
-          </Link>
-          {(userProfile as { isAdmin?: boolean })?.isAdmin === true && (
-            <Link
-              href="/admin"
-              className="wallet-admin-btn"
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
-            >
-              Dashboard admin
-            </Link>
-          )}
-          <button 
-            type="button"
-            className="wallet-logout-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) return;
-              setIsExpanded(false);
-              // Déconnecter en différé pour améliorer l'INP (paint du panneau fermé d'abord)
-              setTimeout(() => {
-                logout().then(() => router.push('/login'));
-              }, 0);
-            }}
-          >
-            Déconnexion
-          </button>
-          {balance > 0 && balance < MIN_WITHDRAWAL && (
-            <p className="wallet-withdraw-hint">Retrait à partir de {MIN_WITHDRAWAL.toLocaleString()} FCFA</p>
-          )}
-        </div>
+      {showTrigger && (
+        <>
+          <div className="wallet-container-compact">
+            <div className="wallet-header-compact" aria-label="Portefeuille">
+              <IconWallet size={14} className="wallet-icon-compact" />
+              {username && <span className="wallet-username-compact">{username.toUpperCase()}</span>}
+              <span className="wallet-balance-compact">{balance.toFixed(2)} FCFA</span>
+            </div>
+          </div>
+        </>
       )}
-      </div>
 
-      {isExpanded && (
-        <div
-          className="wallet-dropdown-backdrop"
-          onClick={() => setIsExpanded(false)}
-          aria-hidden="true"
-        />
+      {showDetailsInModal && onCloseModal && (
+        <div className="wallet-modal-overlay" onClick={onCloseModal}>
+          <div className="wallet-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="wallet-modal-header">
+              <IconWallet size={22} className="wallet-modal-icon" />
+              <h3 className="wallet-modal-title">Gestion</h3>
+              <button type="button" className="wallet-modal-close" onClick={onCloseModal} aria-label="Fermer">×</button>
+            </div>
+            <div className="wallet-modal-body">{walletDetailsContent}</div>
+          </div>
+        </div>
       )}
 
       {showWithdrawModal && (
@@ -551,46 +423,6 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
         </div>
       )}
 
-      {showSettingsModal && (
-        <div
-          className="withdraw-modal-overlay"
-          onClick={() => setShowSettingsModal(false)}
-        >
-          <div className="withdraw-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="withdraw-modal-header">
-              <div className="withdraw-modal-header-inner">
-                <span className="withdraw-modal-icon settings-modal-icon" aria-hidden="true">⚙</span>
-                <h3 className="withdraw-modal-title">Paramètres</h3>
-              </div>
-              <button
-                type="button"
-                className="withdraw-modal-close"
-                onClick={() => setShowSettingsModal(false)}
-                aria-label="Fermer"
-              >
-                ×
-              </button>
-            </div>
-            <div className="wallet-settings-content">
-              <Link
-                href="/change-password"
-                className="wallet-settings-link"
-                onClick={() => { setShowSettingsModal(false); setIsExpanded(false); }}
-              >
-                Changer mon mot de passe
-              </Link>
-              <button
-                type="button"
-                className="wallet-settings-link wallet-settings-link-danger"
-                onClick={handleDeleteAccount}
-              >
-                Supprimer mon compte
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showHelpModal && (
         <div
           className="withdraw-modal-overlay"
@@ -705,7 +537,7 @@ export default function Wallet({ userId, username, userEmail }: WalletProps) {
         <div
           className="wallet-avatar-preview-overlay"
           onClick={() => setShowAvatarPreview(false)}
-          aria-label="Fermer l’aperçu"
+          aria-label="Fermer l'aperçu"
         >
           <button
             type="button"

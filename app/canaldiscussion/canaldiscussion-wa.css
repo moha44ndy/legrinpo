@@ -33,6 +33,13 @@
     margin-bottom: 12px;
 }
 
+.header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
 .header-title {
     font-size: 20px;
     font-weight: 600;
@@ -40,6 +47,35 @@
     flex: 1;
     min-width: 0;
     text-align: left;
+}
+
+.header-menu-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+
+.header-menu-dots:hover {
+    background: rgba(74, 158, 255, 0.15);
+    color: #4a9eff;
+}
+
+/* Wallet en mode modal uniquement : le conteneur ne prend pas de place */
+.header-actions-wallet-modal {
+    flex: 0 0 0;
+    min-width: 0;
+    width: 0;
+    overflow: visible;
 }
 
 .header-btn {

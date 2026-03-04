@@ -51,6 +51,9 @@ export default function HelpPage() {
   return (
     <main className="help-page">
       <div className="help-page-inner">
+        <p className="help-back help-back-top">
+          <Link href="/settings">← Retour</Link>
+        </p>
         <h1>Aide</h1>
         <p className="help-intro">
           Besoin d&apos;aide ? Consultez les informations ci-dessous ou envoyez-nous un message.
@@ -114,8 +117,6 @@ export default function HelpPage() {
 
         <p className="help-back">
           <Link href="/privacy">Politique de confidentialité</Link>
-          {' · '}
-          <Link href="/canaldiscussion">← Retour aux canaux</Link>
         </p>
       </div>
     </main>

@@ -25,16 +25,10 @@
   background: rgba(74, 158, 255, 0.15);
   border: 1px solid rgba(74, 158, 255, 0.3);
   border-radius: 12px;
-  transition: all 0.2s;
   font-size: 0.75rem;
   font-weight: 500;
-  cursor: pointer;
-}
-
-.wallet-header-compact:hover {
-  background: rgba(74, 158, 255, 0.25);
-  border-color: rgba(74, 158, 255, 0.5);
-  transform: translateY(-1px);
+  cursor: default;
+  pointer-events: none;
 }
 
 .wallet-icon-compact {
@@ -504,25 +498,99 @@
   background: rgba(74, 158, 255, 0.15);
   border-color: rgba(74, 158, 255, 0.4);
 }
+a.wallet-settings-btn {
+  display: block;
+  text-decoration: none;
+  box-sizing: border-box;
+}
 
 .wallet-settings-content {
-  padding: 16px;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .wallet-settings-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(74, 158, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(74, 158, 255, 0.25);
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.95);
   text-decoration: none;
   font-weight: 500;
-  transition: background 0.2s, border-color 0.2s;
+  font-size: 0.95rem;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  box-sizing: border-box;
+  text-align: center;
 }
 .wallet-settings-link:hover {
-  background: rgba(74, 158, 255, 0.12);
+  background: rgba(74, 158, 255, 0.15);
   border-color: rgba(74, 158, 255, 0.4);
   color: #fff;
+}
+.wallet-settings-link-danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-weight: 500;
+}
+.wallet-settings-link-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+/* Bloc « Changer mon pseudo » dans Paramètres */
+.wallet-settings-username-block {
+  margin-bottom: 4px;
+}
+.wallet-settings-username-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 8px;
+}
+.wallet-settings-username-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.wallet-settings-username-row .wallet-settings-username-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.95rem;
+}
+.wallet-settings-username-row .wallet-settings-username-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.wallet-settings-username-actions {
+  display: flex;
+  gap: 8px;
+}
+.wallet-settings-username-actions .wallet-username-edit-btn {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+.wallet-settings-username-error {
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+/* Boutons du modal Paramètres (même rendu que les liens) */
+.wallet-settings-content button.wallet-settings-link {
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .wallet-help-btn {
@@ -592,6 +660,86 @@
   margin: 6px 0 0;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* ========== Modal détails wallet (vrai modal) ========== */
+.wallet-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 39, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  animation: withdraw-overlay-in 0.2s ease-out;
+}
+
+.wallet-modal {
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #1a1f3a 0%, #151a30 100%);
+  border: 1px solid rgba(74, 158, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.wallet-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.wallet-modal-header .wallet-modal-icon {
+  flex-shrink: 0;
+  color: #4a9eff;
+}
+
+.wallet-modal-header .wallet-modal-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.wallet-modal-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.wallet-modal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.wallet-modal-body {
+  padding: 16px 20px 20px;
+}
+
+.wallet-modal-body .wallet-details-username {
+  margin-bottom: 12px;
+}
+
+.wallet-modal-body .wallet-withdraw-btn,
+.wallet-modal-body .wallet-settings-btn,
+.wallet-modal-body .wallet-admin-btn {
+  margin-top: 10px;
 }
 
 /* ========== Modal retrait — style soigné (sans blur pour de meilleures perfs) ========== */
