@@ -183,8 +183,18 @@ export default function CanalCategoriePage() {
     <div className="wa-container">
       <header className="wa-header">
         <div className="header-top">
-          <h1 className="header-title">{categoryName || '…'}</h1>
           <div className="header-title-row">
+            <h1 className="header-title">{categoryName || '…'}</h1>
+            <button
+              type="button"
+              className="header-menu-dots"
+              onClick={() => setWalletModalOpen(true)}
+              aria-label="Ouvrir le portefeuille"
+            >
+              <IconMoreVertical size={22} />
+            </button>
+          </div>
+          <div className="header-actions">
             {userId && (
               <Wallet
                 userId={userId}
@@ -195,14 +205,6 @@ export default function CanalCategoriePage() {
                 onCloseModal={() => setWalletModalOpen(false)}
               />
             )}
-            <button
-              type="button"
-              className="header-menu-dots"
-              onClick={() => setWalletModalOpen(true)}
-              aria-label="Ouvrir le portefeuille"
-            >
-              <IconMoreVertical size={22} />
-            </button>
           </div>
         </div>
       </header>
