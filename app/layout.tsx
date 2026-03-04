@@ -4,6 +4,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { SyncRegistration } from '@/components/SyncRegistration'
 import { AdMobBanner } from '@/components/AdMobBanner'
 import { SwipeBack } from '@/components/SwipeBack'
+import { InitialSplash } from '@/components/InitialSplash'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
+          <InitialSplash />
           <SyncRegistration />
           <AdMobBanner />
           <SwipeBack />

@@ -32,7 +32,6 @@ function ChatPageContent() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -58,6 +57,7 @@ function ChatPageContent() {
   const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
   const [headerAvatarFailed, setHeaderAvatarFailed] = useState(false);
   const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
+
   const isPrivateRoom = !!roomPassword;
   const isPublicRoom = roomId?.startsWith('public_');
   
@@ -90,37 +90,6 @@ function ChatPageContent() {
   });
   
   // Tous les useEffect doivent être appelés avant tout return conditionnel
-
-  // En app Capacitor : correctif de placement uniquement (header + barre message), sans toucher au reste du style
-  useEffect(() => {
-    if (typeof window === 'undefined' || !(window as { Capacitor?: unknown }).Capacitor) return;
-    const id = 'chat-capacitor-placement-patch';
-    if (document.getElementById(id)) return;
-    const style = document.createElement('style');
-    style.id = id;
-    style.textContent = `
-      .chat-header-fixed {
-        padding-top: 0px !important;
-        padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
-        padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
-      }
-      .chat-content { top: 72px !important; }
-      .input-container {
-        padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
-        padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
-        padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
-      }
-      .input-container .message-input,
-      .input-container input,
-      .input-container textarea {
-        font-size: 16px !important;
-        touch-action: manipulation;
-      }
-      .leave-btn { left: max(12px, env(safe-area-inset-left, 0px)) !important; }
-      .status-indicator { right: max(12px, env(safe-area-inset-right, 0px)) !important; }
-    `;
-    document.head.appendChild(style);
-  }, []);
 
   useEffect(() => {
     if (!roomId) {
@@ -242,28 +211,7 @@ function ChatPageContent() {
       document.removeEventListener('touchend', handleGlobalUp);
     };
   }, [handleGlobalMove, handleGlobalUp]);
-
-  // URLs d'aperçu pour images/vidéos (création et révocation pour éviter fuites mémoire)
-  useEffect(() => {
-    const urls = selectedFiles.map((file) => {
-      const t = getMediaType(file);
-      return t === 'image' || t === 'video' ? URL.createObjectURL(file) : '';
-    });
-    setFilePreviewUrls(urls);
-    return () => {
-      urls.forEach((u) => u && URL.revokeObjectURL(u));
-    };
-  }, [selectedFiles]);
-
-  // Empêcher le scroll du body pour que header et barre de message restent fixes (mobile + clavier)
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
+  
   // Attendre la fin du chargement auth avant d'afficher "Authentification requise" (évite le flash au rafraîchissement)
   if (authLoading) {
     return (
@@ -559,37 +507,6 @@ function ChatPageContent() {
     setMessageMenuPosition(null);
   };
 
-  const handleReportMessage = async (message: any) => {
-    try {
-      if (!roomId) {
-        setBannerMessage({ type: 'error', text: 'Salle inconnue pour ce message.' });
-        return;
-      }
-      const res = await fetch('/api/moderation/report-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          messageId: message.id,
-          messageText: message.text || '',
-          authorId: message.userId || null,
-          authorName: message.username || '',
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setBannerMessage({ type: 'error', text: data.error || 'Erreur lors de l\'envoi du signalement.' });
-      } else {
-        setBannerMessage({ type: 'success', text: 'Signalement envoyé à la modération.' });
-      }
-    } catch {
-      setBannerMessage({ type: 'error', text: 'Erreur lors de l\'envoi du signalement.' });
-    } finally {
-      setClickedMessageId(null);
-      setMessageMenuPosition(null);
-    }
-  };
-
   const handleReply = (message: any) => {
     // Préremplir le champ de saisie avec une mention
     setMessageInput(`@${message.username} `);
@@ -715,8 +632,8 @@ function ChatPageContent() {
       {/* Modal image (clic sur une image du chat) */}
       {imageModalUrl && (
         <div className="chat-image-modal-overlay" onClick={() => setImageModalUrl(null)} role="dialog" aria-modal="true" aria-label="Agrandir l'image">
-          <button type="button" className="chat-image-modal-close" onClick={() => setImageModalUrl(null)} aria-label="Fermer" style={{ zIndex: 10000 }}>×</button>
-          <img src={imageModalUrl} alt="" className="chat-image-modal-img" onClick={(e) => e.stopPropagation()} style={{ position: 'relative', zIndex: 0 }} />
+          <button type="button" className="chat-image-modal-close" onClick={() => setImageModalUrl(null)} aria-label="Fermer">×</button>
+          <img src={imageModalUrl} alt="" className="chat-image-modal-img" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
       {/* Modal vidéo */}
@@ -737,7 +654,7 @@ function ChatPageContent() {
       {/* Modal document (PDF, etc.) */}
       {documentModal && (
         <div className="chat-image-modal-overlay" onClick={() => setDocumentModal(null)} role="dialog" aria-modal="true" aria-label="Afficher le document">
-          <button type="button" className="chat-image-modal-close" onClick={() => setDocumentModal(null)} aria-label="Fermer" style={{ zIndex: 10000 }}>×</button>
+          <button type="button" className="chat-image-modal-close" onClick={() => setDocumentModal(null)} aria-label="Fermer">×</button>
           <div className="chat-document-modal-content" onClick={(e) => e.stopPropagation()}>
             <iframe src={documentModal.url} title={documentModal.name} className="chat-document-modal-iframe" />
             <a
@@ -1406,15 +1323,6 @@ function ChatPageContent() {
                             >
                               <span>Copier le texte</span>
                             </button>
-                          <button
-                            className="context-menu-item"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleReportMessage(message);
-                            }}
-                          >
-                            <span>Signaler ce message</span>
-                          </button>
                             {isOwn && (
                               <button
                                 className="context-menu-item context-menu-item-danger"
@@ -1446,98 +1354,40 @@ function ChatPageContent() {
               borderBottom: '1px solid rgba(74, 158, 255, 0.2)',
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '10px',
+              gap: '8px',
             }}>
-              {selectedFiles.map((file, index) => {
-                const mediaType = getMediaType(file);
-                const previewUrl = filePreviewUrls[index];
-                return (
-                  <div
-                    key={index}
-                    className="selected-file-preview"
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 8px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <span>{getMediaType(file) === 'image' ? <IconImage size={16} /> : getMediaType(file) === 'video' ? <IconVideo size={16} /> : <IconAttachment size={16} />}</span>
+                  <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {file.name}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveFile(index)}
                     style={{
-                      position: 'relative',
-                      width: mediaType === 'image' || mediaType === 'video' ? 100 : 'auto',
-                      maxWidth: mediaType === 'image' || mediaType === 'video' ? 140 : 200,
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: '10px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#ff6b6b',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      padding: '0',
                     }}
                   >
-                    {mediaType === 'image' && previewUrl && (
-                      <div style={{ aspectRatio: '1', position: 'relative' }}>
-                        <img
-                          src={previewUrl}
-                          alt={file.name}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
-                        />
-                      </div>
-                    )}
-                    {mediaType === 'video' && previewUrl && (
-                      <div style={{ aspectRatio: '16/10', position: 'relative' }}>
-                        <video
-                          src={previewUrl}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
-                        />
-                      </div>
-                    )}
-                    {(mediaType === 'document' || mediaType === 'audio' || mediaType === 'unknown') && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.9)' }}>
-                          <IconAttachment size={24} />
-                        </span>
-                        <span style={{ fontSize: '0.85rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {file.name}
-                        </span>
-                      </div>
-                    )}
-                    {(mediaType === 'image' || mediaType === 'video') && (
-                      <div style={{ padding: '6px 8px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {file.name}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFile(index)}
-                      aria-label="Retirer le fichier"
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.6)',
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                        lineHeight: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 0,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           

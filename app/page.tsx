@@ -18,15 +18,8 @@ export default function HomePage() {
     }
   }, [user, loading, router]);
 
-  return (
-    <div className="app-loading-screen">
-      <div className="app-loading-inner">
-        <div className="app-loading-logo">
-          <img src="/logo_legrinpo.jpeg" alt="Legrinpo" />
-        </div>
-        <div className="app-loading-title">Legrinpo</div>
-      </div>
-    </div>
-  );
+  // Le visuel de chargement initial est géré globalement par InitialSplash.
+  // Ici on n'affiche rien de spécial.
+  return null;
 }
 
