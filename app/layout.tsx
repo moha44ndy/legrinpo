@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SyncRegistration } from '@/components/SyncRegistration'
+import { CapacitorBodyClass } from '@/components/CapacitorBodyClass'
 import { AdMobBanner } from '@/components/AdMobBanner'
 import { SwipeBack } from '@/components/SwipeBack'
 
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <SyncRegistration />
+          <CapacitorBodyClass />
           <AdMobBanner />
           <SwipeBack />
           {children}
