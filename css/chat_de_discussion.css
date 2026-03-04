@@ -1574,3 +1574,21 @@
         .chat-document-modal-open-tab:hover {
             background: rgba(74, 158, 255, 0.3);
         }
+
+        /* App native (Capacitor) : header et messages sous la barre de statut / Dynamic Island iOS (uniquement pour le chat) */
+        html.native-app .chat-header-fixed {
+            padding-top: max(14px, env(safe-area-inset-top, 52px));
+        }
+        html.native-app .messages {
+            padding-top: max(72px, calc(60px + env(safe-area-inset-top, 52px)));
+        }
+        @media (max-width: 768px) {
+            html.native-app .messages {
+                padding-top: max(66px, calc(56px + env(safe-area-inset-top, 52px)));
+            }
+        }
+        @media (max-width: 480px) {
+            html.native-app .messages {
+                padding-top: max(64px, calc(54px + env(safe-area-inset-top, 52px)));
+            }
+        }
