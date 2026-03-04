@@ -9,7 +9,8 @@ import { SwipeBack } from '@/components/SwipeBack'
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
   themeColor: '#1a237e',
   interactiveWidget: 'resizes-content',

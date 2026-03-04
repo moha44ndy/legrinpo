@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -34,6 +35,11 @@ export default function RegisterPage() {
 
     if (username.length < 3) {
       setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
+      return;
+    }
+
+    if (!acceptPrivacy) {
+      setError('Vous devez accepter la politique de confidentialité pour vous inscrire');
       return;
     }
 
@@ -141,6 +147,23 @@ export default function RegisterPage() {
               minLength={6}
               disabled={loading}
             />
+          </div>
+
+          <div className="form-group form-group-checkbox">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={acceptPrivacy}
+                onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                disabled={loading}
+              />
+              <span>
+                J&apos;accepte la{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-inline">
+                  politique de confidentialité
+                </a>
+              </span>
+            </label>
           </div>
 
           <button 

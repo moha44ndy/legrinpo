@@ -15,6 +15,7 @@ html {
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    touch-action: manipulation;
 }
 
 body {
@@ -27,6 +28,7 @@ body {
     color: #ffffff;
     padding: max(0px, env(safe-area-inset-top, 44px)) env(safe-area-inset-right, 0) max(0px, env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0);
     box-sizing: border-box;
+    touch-action: manipulation;
 }
 
 /* Page Aide /help — safe areas */
@@ -135,6 +137,7 @@ html {
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    touch-action: manipulation;
 }
 
 body {
@@ -147,6 +150,7 @@ body {
     color: #ffffff;
     padding: max(0px, env(safe-area-inset-top, 44px)) env(safe-area-inset-right, 0) max(0px, env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0);
     box-sizing: border-box;
+    touch-action: manipulation;
 }
 
 /* Page Aide /help — safe areas */

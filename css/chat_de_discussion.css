@@ -210,7 +210,7 @@
             min-width: 0;
         }
 
-        /* Container principal */
+        /* Container principal — anti-zoom (double-tap, pinch) */
         .chat-main-container {
             flex: 1;
             min-height: 0;
@@ -218,6 +218,7 @@
             flex-direction: column;
             width: 100%;
             max-width: 100vw;
+            touch-action: manipulation;
         }
 
         .chat-container {
@@ -243,6 +244,7 @@
             flex-direction: column;
             background: #0a0e27;
             z-index: 1;
+            touch-action: manipulation;
         }
 
         .messages {
@@ -588,6 +590,7 @@
             align-items: center;
             box-shadow: none;
             box-sizing: border-box;
+            touch-action: manipulation;
         }
         
         .input-container > div {
@@ -660,6 +663,16 @@
             color: #ef4444;
         }
 
+        /* Anti-zoom chat : tous les champs focusables à 16px min + touch-action (iOS) */
+        .chat-content input[type="text"],
+        .chat-content input[type="email"],
+        .chat-content input[type="search"],
+        .chat-content textarea,
+        .chat-main-container .edit-message-textarea {
+            font-size: 16px !important;
+            font-size: max(1rem, 16px) !important;
+            touch-action: manipulation;
+        }
         .message-input {
             flex: 1 1 auto;
             min-width: 0;
@@ -667,12 +680,14 @@
             border: none;
             border-radius: 22px;
             outline: none;
-            font-size: 0.95rem;
+            font-size: 1rem;
+            font-size: max(1rem, 16px);
             background: rgba(255, 255, 255, 0.04);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             color: #ffffff;
             box-sizing: border-box;
+            touch-action: manipulation;
         }
 
         .message-input:focus {
@@ -784,7 +799,8 @@
             }
 
             .message-input {
-                font-size: 0.9rem;
+                font-size: 1rem;
+                font-size: max(1rem, 16px);
                 padding: 10px 14px;
                 min-width: 0;
             }
@@ -862,7 +878,8 @@
             }
 
             .message-input {
-                font-size: 0.85rem;
+                font-size: 1rem;
+                font-size: max(1rem, 16px);
                 padding: 8px 12px;
             }
 
@@ -1582,13 +1599,23 @@
         html.native-app .messages {
             padding-top: max(72px, calc(60px + env(safe-area-inset-top, 52px)));
         }
+        /* Barre de saisie remontée au-dessus de la zone d’accueil iOS */
+        html.native-app .chat-content .input-container {
+            padding-bottom: max(12px, env(safe-area-inset-bottom, 34px));
+        }
         @media (max-width: 768px) {
             html.native-app .messages {
                 padding-top: max(66px, calc(56px + env(safe-area-inset-top, 52px)));
+            }
+            html.native-app .chat-content .input-container {
+                padding-bottom: max(12px, env(safe-area-inset-bottom, 34px));
             }
         }
         @media (max-width: 480px) {
             html.native-app .messages {
                 padding-top: max(64px, calc(54px + env(safe-area-inset-top, 52px)));
+            }
+            html.native-app .chat-content .input-container {
+                padding-bottom: max(12px, env(safe-area-inset-bottom, 34px));
             }
         }
