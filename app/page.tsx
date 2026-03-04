@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { AppLoading } from '@/components/AppLoading';
 
 export default function HomePage() {
   const router = useRouter();
@@ -18,8 +19,7 @@ export default function HomePage() {
     }
   }, [user, loading, router]);
 
-  // Le visuel de chargement initial est géré globalement par InitialSplash.
-  // Ici on n'affiche rien de spécial.
-  return null;
+  // Écran de démarrage avec le logo pendant que l'app décide où envoyer l'utilisateur.
+  return <AppLoading />;
 }
 

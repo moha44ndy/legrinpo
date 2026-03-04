@@ -274,24 +274,15 @@ export default function CanalDiscussionPage() {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '100vh',
-        background: '#0a0e27',
-        color: '#ffffff'
-      }}>
-        Chargement...
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  // Quand les sections pub + discussions sont prêtes pour la première fois,
+  // on signale à l'écran de splash initial que la page principale est prête.
+  useEffect(() => {
+    const ready = sectionLoaded.ad && sectionLoaded.discussions;
+    if (!ready) return;
+    if (typeof window !== 'undefined' && !window.sessionStorage.getItem('legrinpoMainScreenReady')) {
+      window.sessionStorage.setItem('legrinpoMainScreenReady', '1');
+    }
+  }, [sectionLoaded.ad, sectionLoaded.discussions]);
 
   return (
     <div className="wa-container">
@@ -318,13 +309,9 @@ export default function CanalDiscussionPage() {
       {(() => {
         const ready = sectionLoaded.ad && sectionLoaded.discussions;
         if (!ready) {
-          return (
-            <div className="public-rooms-section">
-              <div className="public-rooms-loading">
-                <span className="public-rooms-loading-text">Chargement...</span>
-              </div>
-            </div>
-          );
+          // Pendant le chargement initial, on ne montre plus de texte "Chargement..."
+          // pour laisser le logo de démarrage couvrir la phase de chargement globale.
+          return null;
         }
         const publicRooms = allChats.filter(chat => chat.id.startsWith('public_'));
         const byCategory = new Map<string, typeof publicRooms>();
