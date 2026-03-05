@@ -47,6 +47,7 @@ workflows:
     name: Android Workflow (Legrinpo)
     max_build_duration: 120
     environment:
+      java: 21
       vars:
         # URL du site en prod : l’app Android charge cette URL (via capacitor.config.ts)
         PRODUCTION_WEB_URL: "https://www.legrinpo.com"
