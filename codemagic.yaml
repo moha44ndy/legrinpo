@@ -42,28 +42,3 @@ workflows:
         submit_to_testflight: true
         beta_groups: []
         submit_to_app_store: false
-
-  android-workflow:
-    name: Android Workflow (Legrinpo)
-    max_build_duration: 120
-    environment:
-      java: 21
-      vars:
-        # URL du site en prod : l’app Android charge cette URL (via capacitor.config.ts)
-        PRODUCTION_WEB_URL: "https://www.legrinpo.com"
-    scripts:
-      - name: Install npm dependencies
-        script: npm ci
-      - name: Prepare cap-web + sync Capacitor (Android)
-        script: |
-          rm -rf cap-web && mkdir -p cap-web
-          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Legrinpo</title></head><body><p>Chargement…</p></body></html>' > cap-web/index.html
-          npx cap sync android
-      - name: Build Android App Bundle
-        script: |
-          cd android
-          chmod +x gradlew
-          ./gradlew bundleRelease
-    artifacts:
-      - android/app/build/outputs/**/*.aab
-      - android/app/build/outputs/**/*.apk
