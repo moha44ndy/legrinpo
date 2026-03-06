@@ -87,11 +87,28 @@ export default function PrivacyPage() {
         </section>
 
         <section className="help-section">
-          <h2>8. Sécurité et mineurs</h2>
+          <h2>8. Sécurité et mineurs — protection des enfants</h2>
           <p>
             Nous mettons en œuvre des mesures techniques et organisationnelles pour protéger vos données. Le service n&apos;est pas
             destiné aux mineurs ; nous ne collectons pas sciemment de données d&apos;enfants. Si vous constatez qu&apos;un mineur nous
             a communiqué des données, contactez-nous pour qu&apos;elles soient supprimées.
+          </p>
+          <p>
+            <strong>Interdiction des contenus d&apos;exploitation et d&apos;abus sexuels sur mineurs.</strong> Legrinpo interdit strictement
+            tout contenu lié à l&apos;exploitation des enfants ou aux abus sexuels sur mineurs. La publication, le partage ou la
+            sollicitation de tels contenus entraîne la suppression immédiate des contenus, le blocage des comptes concernés et,
+            le cas échéant, le signalement aux autorités compétentes.
+          </p>
+          <p>
+            <strong>Modération et signalement.</strong> Nous modérons les contenus et les comportements sur la plateforme. Vous pouvez
+            signaler tout message ou profil inapproprié via la fonction de signalement dans le chat ou depuis la page Aide. Les
+            signalements sont traités en priorité, notamment ceux susceptibles de concerner la sécurité des mineurs.
+          </p>
+          <p>
+            <strong>Contact pour signaler.</strong> Pour signaler un contenu ou un comportement lié à l&apos;exploitation ou aux abus
+            envers des mineurs, ou pour toute question relative à la prévention de ces contenus, contactez-nous à{' '}
+            <a href="mailto:legrinpo@gmail.com" className="privacy-link">legrinpo@gmail.com</a>. Nous nous engageons à traiter
+            ces signalements avec la plus grande diligence.
           </p>
         </section>
 
