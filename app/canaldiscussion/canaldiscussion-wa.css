@@ -667,6 +667,7 @@
 }
 
 .skeleton-card {
+    position: relative;
     background: rgba(74, 158, 255, 0.08);
     border: 1px solid rgba(74, 158, 255, 0.2);
     border-radius: 8px;
@@ -730,8 +731,10 @@
     pointer-events: none;
 }
 
-.skeleton-card {
-    position: relative;
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-card::after {
+        animation: none;
+    }
 }
 
 @keyframes skeleton-shimmer {
