@@ -331,12 +331,21 @@ export default function CanalDiscussionPage() {
         ) : null}
       </header>
 
-      {/* Public Rooms Section — affichée dès que les discussions sont prêtes (sans attendre la pub) */}
+      {/* Public Rooms Section — squelette pendant le chargement, puis grille réelle */}
       {(() => {
         if (!sectionLoaded.discussions) {
           return (
-            <div className="public-rooms-section public-rooms-loading" aria-busy="true">
-              <p className="public-rooms-loading-text">Chargement des discussions…</p>
+            <div className="public-rooms-section public-rooms-skeleton" aria-busy="true" aria-label="Chargement des discussions">
+              <div className="public-room-grid many-cases">
+                <div className="skeleton-card skeleton-ad-slot" />
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="skeleton-card skeleton-category">
+                    <span className="skeleton-icon" />
+                    <span className="skeleton-line skeleton-title" />
+                    <span className="skeleton-line skeleton-sub" />
+                  </div>
+                ))}
+              </div>
             </div>
           );
         }
