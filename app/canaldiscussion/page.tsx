@@ -185,8 +185,10 @@ export default function CanalDiscussionPage() {
     return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
   };
 
-  // Charger les discussions (salons publics uniquement)
+  // Charger les discussions (salons publics uniquement). Timeout pour éviter écran vide sur WebView (ex. iPad).
   useEffect(() => {
+    const DISCUSSIONS_TIMEOUT_MS = 10000;
+
     const loadDiscussions = async () => {
       const chats: ChatItem[] = [];
 
@@ -259,7 +261,16 @@ export default function CanalDiscussionPage() {
       setSectionLoaded(prev => ({ ...prev, discussions: true }));
     };
 
-    loadDiscussions();
+    const timeoutId = setTimeout(() => {
+      setSectionLoaded(prev => {
+        if (prev.discussions) return prev;
+        return { ...prev, discussions: true };
+      });
+    }, DISCUSSIONS_TIMEOUT_MS);
+
+    loadDiscussions().finally(() => {
+      clearTimeout(timeoutId);
+    });
   }, []);
 
   const handleRejoinRoom = (chat: ChatItem) => {
@@ -275,15 +286,14 @@ export default function CanalDiscussionPage() {
     }
   }, [user, authLoading, router]);
 
-  // Quand les sections pub + discussions sont prêtes pour la première fois,
-  // on signale à l'écran de splash initial que la page principale est prête.
+  // Quand les discussions sont prêtes, on signale à l'écran de splash que la page principale est prête.
+  // On ne dépend pas de la pub pour éviter écran vide si l'API pub est lente (ex. WebView iPad).
   useEffect(() => {
-    const ready = sectionLoaded.ad && sectionLoaded.discussions;
-    if (!ready) return;
+    if (!sectionLoaded.discussions) return;
     if (typeof window !== 'undefined' && !window.sessionStorage.getItem('legrinpoMainScreenReady')) {
       window.sessionStorage.setItem('legrinpoMainScreenReady', '1');
     }
-  }, [sectionLoaded.ad, sectionLoaded.discussions]);
+  }, [sectionLoaded.discussions]);
 
   return (
     <div className="wa-container">
@@ -314,22 +324,21 @@ export default function CanalDiscussionPage() {
             )}
           </div>
         </div>
-        <div className="ad-bar">
-          {adCanalHtml ? (
+        {adCanalHtml ? (
+          <div className="ad-bar">
             <div ref={setAdBarRef} className="ad-bar-content" />
-          ) : (
-            <span className="ad-bar-label">Espace publicitaire</span>
-          )}
-        </div>
+          </div>
+        ) : null}
       </header>
 
-      {/* Public Rooms Section — Chargement... puis grille (bannière native + cases) */}
+      {/* Public Rooms Section — affichée dès que les discussions sont prêtes (sans attendre la pub) */}
       {(() => {
-        const ready = sectionLoaded.ad && sectionLoaded.discussions;
-        if (!ready) {
-          // Pendant le chargement initial, on ne montre plus de texte "Chargement..."
-          // pour laisser le logo de démarrage couvrir la phase de chargement globale.
-          return null;
+        if (!sectionLoaded.discussions) {
+          return (
+            <div className="public-rooms-section public-rooms-loading" aria-busy="true">
+              <p className="public-rooms-loading-text">Chargement des discussions…</p>
+            </div>
+          );
         }
         const publicRooms = allChats.filter(chat => chat.id.startsWith('public_'));
         const byCategory = new Map<string, typeof publicRooms>();
