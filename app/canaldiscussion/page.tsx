@@ -37,6 +37,7 @@ export default function CanalDiscussionPage() {
   const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({ ad: false, discussions: false });
   const [categoriesCanal, setCategoriesCanal] = useState<{ id: string; name: string; order: number }[]>([]);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [discussionsRetryCount, setDiscussionsRetryCount] = useState(0);
   const adBarRef = useRef<HTMLDivElement>(null);
   const adNativeBarRef = useRef<HTMLDivElement>(null);
 
@@ -271,7 +272,7 @@ export default function CanalDiscussionPage() {
     loadDiscussions().finally(() => {
       clearTimeout(timeoutId);
     });
-  }, []);
+  }, [discussionsRetryCount]);
 
   const handleRejoinRoom = (chat: ChatItem) => {
     const params = new URLSearchParams({ room: chat.room.id });
@@ -404,6 +405,22 @@ export default function CanalDiscussionPage() {
               </Link>
             )}
           </div>
+          {/* État vide : aucune discussion chargée — message + réessayer */}
+          {totalCards === 1 && publicRooms.length === 0 && (
+            <div className="public-rooms-empty">
+              <p className="public-rooms-empty-text">Aucune discussion pour le moment.</p>
+              <button
+                type="button"
+                className="public-rooms-retry-btn"
+                onClick={() => {
+                  setSectionLoaded(prev => ({ ...prev, discussions: false }));
+                  setDiscussionsRetryCount(c => c + 1);
+                }}
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
           {/* Fallback : aucune catégorie, afficher tous les salons en grille directe */}
           {categoriesCanal.length === 0 && !hasUncategorized && publicRooms.length > 0 && (
             <div className="public-rooms-category-block">
