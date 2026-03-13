@@ -9,6 +9,7 @@ import { IconGlobeAlt, IconMoreVertical } from '@/components/Icons';
 import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
+import { getPublicRoomsCache, isPublicRoomsCacheValid, setPublicRoomsCache } from '@/lib/public-rooms-client-cache';
 import '../globals.css';
 import './canaldiscussion-wa.css';
 
@@ -30,12 +31,42 @@ export default function CanalDiscussionPage() {
   // Utiliser uid de userProfile ou user, ou générer un ID temporaire
   const userId = userProfile?.uid || user?.uid || (user?.id ? `db_${user.id}` : `temp_${Date.now()}`);
 
-  const [allChats, setAllChats] = useState<ChatItem[]>([]);
+  // Lire une fois le cache au moment de l'initialisation pour éviter un flash de squelette
+  const cached = getPublicRoomsCache();
+  const hasValidCache = !!cached && isPublicRoomsCacheValid();
+
+  const [allChats, setAllChats] = useState<ChatItem[]>(() => {
+    if (!hasValidCache || !cached) return [];
+    // On reconstruit une version minimale des chats pour l'affichage immédiat.
+    return cached.rooms.map((publicRoom) => ({
+      id: publicRoom.id,
+      name: publicRoom.name,
+      type: 'group' as const,
+      isPrivate: false,
+      lastMessage: '', // sera enrichi ensuite par getLastMessage
+      timestamp: new Date().toISOString(),
+      avatar: { char: (publicRoom.name || '?').charAt(0), color: '#d32f2f' },
+      room: {
+        id: publicRoom.id,
+        name: publicRoom.name,
+        description: publicRoom.description || '',
+        type: 'public' as const,
+        createdAt: new Date().toISOString(),
+        categoryId: publicRoom.categoryId,
+      },
+    }));
+  });
   const [lastMessagesCache, setLastMessagesCache] = useState<{ [key: string]: string }>({});
   const [adCanalHtml, setAdCanalHtml] = useState<string>('');
   const [adCanalNativeHtml, setAdCanalNativeHtml] = useState<string>('');
-  const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({ ad: false, discussions: false });
-  const [categoriesCanal, setCategoriesCanal] = useState<{ id: string; name: string; order: number }[]>([]);
+  const [sectionLoaded, setSectionLoaded] = useState<{ ad: boolean; discussions: boolean }>({
+    ad: false,
+    discussions: hasValidCache,
+  });
+  const [categoriesCanal, setCategoriesCanal] = useState<{ id: string; name: string; order: number }[]>(() => {
+    if (!hasValidCache || !cached) return [];
+    return cached.categories;
+  });
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [discussionsRetryCount, setDiscussionsRetryCount] = useState(0);
   const adBarRef = useRef<HTMLDivElement>(null);
@@ -186,6 +217,7 @@ export default function CanalDiscussionPage() {
     return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
   };
 
+
   // Charger les discussions (salons publics uniquement). Timeout pour éviter écran vide sur WebView (ex. iPad).
   useEffect(() => {
     const DISCUSSIONS_TIMEOUT_MS = 10000;
@@ -228,6 +260,8 @@ export default function CanalDiscussionPage() {
               };
             })
             .sort((a, b) => a.createdAt - b.createdAt);
+
+          setPublicRoomsCache(publicRooms, categoriesList);
         } catch (err) {
           console.error('Erreur chargement salons publics Firebase:', err);
         }
@@ -332,9 +366,12 @@ export default function CanalDiscussionPage() {
         ) : null}
       </header>
 
-      {/* Public Rooms Section — squelette pendant le chargement, puis grille réelle */}
+      {/* Public Rooms Section — squelette pendant le tout premier chargement uniquement */}
       {(() => {
-        if (!sectionLoaded.discussions) {
+        // On n'affiche le squelette que lorsqu'aucune discussion n'est encore disponible.
+        // Si du contenu est déjà présent (ex. navigation retour, état restauré, future hydratation avec données),
+        // on affiche directement la grille sans passer par le squelette.
+        if (!sectionLoaded.discussions && allChats.length === 0) {
           return (
             <div className="public-rooms-section public-rooms-skeleton" aria-busy="true" aria-label="Chargement des discussions">
               <div className="public-room-grid many-cases">

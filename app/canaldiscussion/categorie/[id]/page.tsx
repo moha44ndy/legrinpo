@@ -9,6 +9,7 @@ import { IconGlobeAlt, IconArrowLeft, IconMoreVertical } from '@/components/Icon
 import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getPublicRoomsCache, isPublicRoomsCacheValid } from '@/lib/public-rooms-client-cache';
 import '../../../globals.css';
 import '../../canaldiscussion-wa.css';
 
@@ -20,6 +21,22 @@ interface RoomItem {
 }
 
 const SANS_CATEGORIE_ID = 'sans-categorie';
+
+function sortRoomsForCategory(list: RoomItem[], categoryName: string): RoomItem[] {
+  const globalName = `Global ${categoryName}`;
+  return [...list].sort((a, b) => {
+    // 0 = Global (en premier), 1 = salons créés à la main (après Global, avant pays), 2 = salons pays (en dernier)
+    const order = (room: RoomItem) => {
+      if (room.name === globalName) return 0;
+      if (getCountryFromRoomName(room.name)) return 2;
+      return 1;
+    };
+    const oa = order(a);
+    const ob = order(b);
+    if (oa !== ob) return oa - ob;
+    return a.name.localeCompare(b.name);
+  });
+}
 
 export default function CanalCategoriePage() {
   const router = useRouter();
@@ -87,7 +104,20 @@ export default function CanalCategoriePage() {
     setError(null);
     try {
       if (id === SANS_CATEGORIE_ID) {
-        setCategoryName('Sans catégorie');
+        const label = 'Sans catégorie';
+        // Tenter d'abord d'utiliser le cache partagé s'il est encore valide
+        const cached = getPublicRoomsCache();
+        if (cached && isPublicRoomsCacheValid()) {
+          setCategoryName(label);
+          const list: RoomItem[] = cached.rooms
+            .filter((room) => !room.categoryId)
+            .sort((a, b) => a.name.localeCompare(b.name));
+          setRooms(list);
+          setLoading(false);
+          return;
+        }
+
+        setCategoryName(label);
         const roomsRef = collection(db, 'rooms');
         const q = query(roomsRef, where('type', '==', 'public'));
         const snapshot = await getDocs(q);
@@ -103,6 +133,19 @@ export default function CanalCategoriePage() {
         });
         setRooms(list);
       } else {
+        // Tenter d'abord d'utiliser le cache partagé s'il est encore valide
+        const cached = getPublicRoomsCache();
+        if (cached && isPublicRoomsCacheValid()) {
+          const cat = cached.categories.find((c) => c.id === id);
+          const catName = cat?.name ?? '';
+          if (catName) setCategoryName(catName);
+          const baseList: RoomItem[] = cached.rooms.filter((room) => room.categoryId === id);
+          const sortedFromCache = sortRoomsForCategory(baseList, catName || ''); // même logique que Firestore
+          setRooms(sortedFromCache);
+          setLoading(false);
+          return;
+        }
+
         const catRef = doc(db, 'categories', id);
         const catSnap = await getDoc(catRef);
         if (!catSnap.exists()) {
@@ -117,8 +160,7 @@ export default function CanalCategoriePage() {
         const roomsRef = collection(db, 'rooms');
         const q = query(roomsRef, where('type', '==', 'public'), where('categoryId', '==', id));
         const snapshot = await getDocs(q);
-        const globalName = `Global ${catName}`;
-        const list: RoomItem[] = snapshot.docs
+        const baseList: RoomItem[] = snapshot.docs
           .map((docSnap) => {
             const d = docSnap.data();
             return {
@@ -127,20 +169,9 @@ export default function CanalCategoriePage() {
               description: (d.description as string) || '',
               categoryId: d.categoryId as string | undefined,
             };
-          })
-          .sort((a, b) => {
-            // 0 = Global (en premier), 1 = salons créés à la main (après Global, avant pays), 2 = salons pays (en dernier)
-            const order = (room: RoomItem) => {
-              if (room.name === globalName) return 0;
-              if (getCountryFromRoomName(room.name)) return 2;
-              return 1;
-            };
-            const oa = order(a);
-            const ob = order(b);
-            if (oa !== ob) return oa - ob;
-            return a.name.localeCompare(b.name);
           });
-        setRooms(list);
+        const sorted = sortRoomsForCategory(baseList, catName);
+        setRooms(sorted);
       }
     } catch (err) {
       console.error('Erreur chargement catégorie:', err);
@@ -229,9 +260,18 @@ export default function CanalCategoriePage() {
       </div>
 
       <main className="public-rooms-section">
-        {loading && (
-          <div className="public-rooms-loading">
-            <span className="public-rooms-loading-text">Chargement...</span>
+        {/* Squelette uniquement lors du tout premier chargement (aucune room encore disponible) */}
+        {loading && rooms.length === 0 && (
+          <div className="public-rooms-skeleton" aria-busy="true" aria-label="Chargement des discussions de la catégorie">
+            <div className="public-room-grid many-cases">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="skeleton-card skeleton-category">
+                  <span className="skeleton-icon" />
+                  <span className="skeleton-line skeleton-title" />
+                  <span className="skeleton-line skeleton-sub" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {error && (

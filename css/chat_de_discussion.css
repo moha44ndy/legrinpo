@@ -256,7 +256,6 @@
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
             background: linear-gradient(180deg, #0a0e27 0%, #0d1220 100%);
-            scroll-behavior: smooth;
             min-height: 400px;
             display: flex;
             flex-direction: column;
@@ -283,7 +282,6 @@
 
         .message {
             margin-bottom: 16px;
-            animation: slideIn 0.3s ease-out;
             padding: 4px 0;
             max-width: 100%;
             min-width: 0;

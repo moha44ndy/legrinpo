@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, Suspense, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useState, Suspense, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, FileAttachment } from '@/hooks/useChat';
 import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
@@ -54,6 +55,8 @@ function ChatPageContent() {
   const cancelRecordingHandlerRef = useRef<() => void>(() => {});
   const [isScrollingMessages, setIsScrollingMessages] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollMessageCountRef = useRef(0);
   const [userAvatarsMap, setUserAvatarsMap] = useState<Record<string, string>>({});
   const [headerAvatarFailed, setHeaderAvatarFailed] = useState(false);
   const [failedAvatarUrls, setFailedAvatarUrls] = useState<Record<string, boolean>>({});
@@ -96,6 +99,27 @@ function ChatPageContent() {
       router.push(returnTo);
     }
   }, [roomId, router, returnTo]);
+
+  // Forcer le scroll en bas (y compris re-entrée avec cache, après restauration du scroll)
+  useLayoutEffect(() => {
+    if (connectionStatus !== 'online' || messages.length === 0) return;
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    if (messages.length > lastScrollMessageCountRef.current) {
+      lastScrollMessageCountRef.current = messages.length;
+    }
+  }, [messages.length, connectionStatus]);
+
+  useEffect(() => {
+    if (connectionStatus !== 'online' || messages.length === 0) return;
+    const run = () => {
+      const el = messagesContainerRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    const t1 = setTimeout(run, 100);
+    const t2 = setTimeout(run, 400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [messages.length, connectionStatus]);
 
   // Récupérer les photos de profil des expéditeurs pour afficher les avatars à côté des messages
   useEffect(() => {
@@ -230,7 +254,7 @@ function ChatPageContent() {
           <p style={{ margin: '20px 0' }}>
             Vous devez être connecté pour accéder au chat.
           </p>
-          <a
+          <Link
             href={returnTo}
             style={{
               background: '#4a9eff',
@@ -244,7 +268,7 @@ function ChatPageContent() {
             }}
           >
             Retour
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -587,7 +611,7 @@ function ChatPageContent() {
           <p style={{ margin: '20px 0' }}>
             L&apos;administrateur du groupe vous a retiré. Vous ne pouvez plus accéder à cette discussion.
           </p>
-          <a
+          <Link
             href={returnTo}
             style={{
               background: '#4a9eff',
@@ -601,7 +625,7 @@ function ChatPageContent() {
             }}
           >
             Retour
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -775,9 +799,9 @@ function ChatPageContent() {
         <div className="chat-content">
           <div className="chat-header-fixed">
             <div className="chat-header-container chat-header-messenger">
-              <a href={returnTo} className="leave-btn" title="Retour" aria-label="Retour">
+              <Link href={returnTo} className="leave-btn" title="Retour" aria-label="Retour">
                 ‹
-              </a>
+              </Link>
               <div className="chat-header-center">
                 <div className="chat-header-title-container">
                   <h1 className="chat-header-title">{chatTitle}</h1>
@@ -818,6 +842,7 @@ function ChatPageContent() {
             <span className="pinned-preview">—</span>
           </div>
           <div
+            ref={messagesContainerRef}
             className={`messages ${isScrollingMessages ? 'is-scrolling' : ''}`}
             id="messages"
             onScroll={() => {
@@ -1489,13 +1514,9 @@ function ChatPageContent() {
                 disabled={!isConnected || uploading || (!messageInput.trim() && selectedFiles.length === 0 && !recordedAudioBlob && !isRecordingVoice)}
                 title="Envoyer"
               >
-                {uploading ? (
-                  <span className="send-btn-text">Envoi...</span>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                  </svg>
-                )}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
               </button>
             ) : null}
           </div>

@@ -18,6 +18,7 @@ import {
   Timestamp,
   increment,
 } from 'firebase/firestore';
+import { getChatRoomCache, setChatRoomCache, invalidateChatRoomCache } from '@/lib/chat-client-cache';
 
 export interface RoomMember {
   userId: string;
@@ -73,9 +74,14 @@ export function useChat({
   userAvatar,
   isPrivateRoom,
 }: UseChatOptions) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'connecting' | 'offline' | 'removed'>('connecting');
+  const cached = roomId ? getChatRoomCache(roomId) : null;
+  const hasValidCache = !!cached && !!cached.messages && cached.messages.length > 0;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => (hasValidCache ? cached!.messages : []));
+  const [isConnected, setIsConnected] = useState<boolean>(hasValidCache);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'connecting' | 'offline' | 'removed'>(
+    hasValidCache ? 'online' : 'connecting'
+  );
   const [passwordVerified, setPasswordVerified] = useState(false);
   const [roomCreatorId, setRoomCreatorId] = useState<string | null>(null);
   const [removedUserIds, setRemovedUserIds] = useState<string[]>([]);
@@ -92,21 +98,48 @@ export function useChat({
   }, [roomMembers, removedUserIds]);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  const scrollToBottomInstant = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, []);
+
+  // Rester en bas à l’entrée (cache ou Firestore) et à chaque nouveau message
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const prev = previousMessageCountRef.current;
+    if (messages.length > prev) {
+      previousMessageCountRef.current = messages.length;
+      const isInitialLoad = prev === 0;
+      let cancelled = false;
+      const doScroll = () => {
+        if (cancelled) return;
+        scrollToBottom();
+        if (!messagesEndRef.current) setTimeout(doScroll, 50);
+      };
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => doScroll());
+      });
+      // Re-entrée avec cache : la restauration du scroll (navigateur/Next) peut nous remettre en haut → on rejoue le scroll
+      let t: ReturnType<typeof setTimeout> | undefined;
+      if (isInitialLoad) {
+        t = setTimeout(() => {
+          if (!cancelled) scrollToBottom();
+        }, 400);
+      }
+      return () => {
+        cancelled = true;
+        if (t) clearTimeout(t);
+      };
+    }
+  }, [messages.length, scrollToBottom]);
 
   useEffect(() => {
     let unsubscribeMessages: (() => void) | null = null;
     let unsubscribeRoom: (() => void) | null = null;
 
     const init = async () => {
-      previousMessageCountRef.current = 0;
       try {
-        setConnectionStatus('connecting');
+        if (!hasValidCache) {
+          setConnectionStatus('connecting');
+        }
 
         // Vérifier le mot de passe si c'est un salon privé
         if (isPrivateRoom && roomPassword) {
@@ -218,17 +251,11 @@ export function useChat({
               });
             });
             setMessages(newMessages);
+            if (roomId) {
+              setChatRoomCache(roomId, newMessages);
+            }
             setIsConnected(true);
             setConnectionStatus('online');
-            
-            // Ne scroller que quand un nouveau message est ajouté (pas quand seules les réactions changent)
-            const prevCount = previousMessageCountRef.current;
-            previousMessageCountRef.current = newMessages.length;
-            if (newMessages.length > prevCount) {
-              setTimeout(() => {
-                scrollToBottomInstant();
-              }, 100);
-            }
           },
           (error) => {
             console.error('Erreur lors de l\'écoute des messages:', error);
@@ -249,7 +276,7 @@ export function useChat({
       unsubscribeMessages?.();
       unsubscribeRoom?.();
     };
-  }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, scrollToBottomInstant]);
+  }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, hasValidCache, messages.length]);
 
   const sendMessage = useCallback(
     async (
