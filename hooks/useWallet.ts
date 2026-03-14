@@ -17,31 +17,36 @@ export function useWallet(userId: string) {
       return;
     }
 
+    let cancelled = false;
     let unsubscribe: (() => void) | null = null;
+    const currentUserId = userId;
 
     const loadWallet = async () => {
       try {
         setLoading(true);
         setError(null);
-        const walletData = await getOrCreateWallet(userId);
+        const walletData = await getOrCreateWallet(currentUserId);
+        if (cancelled) return;
         setWallet(walletData);
         setBalance(walletData.balance || 0);
       } catch (err: any) {
+        if (cancelled) return;
         console.error('Erreur chargement du portefeuille:', err);
         setError(err?.message || 'Impossible de charger le portefeuille');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
 
-      if (!db) return;
-      const walletRef = doc(db, 'wallets', userId);
+      if (!db || cancelled) return;
+      const walletRef = doc(db, 'wallets', currentUserId);
       unsubscribe = onSnapshot(
         walletRef,
         (snap) => {
+          if (cancelled) return;
           if (snap.exists()) {
             const data = snap.data();
             const w: Wallet = {
-              userId: data.userId || userId,
+              userId: data.userId || currentUserId,
               balance: data.balance ?? 0,
               totalEarned: data.totalEarned ?? 0,
               totalSpent: data.totalSpent ?? 0,
@@ -53,7 +58,7 @@ export function useWallet(userId: string) {
           }
         },
         (err) => {
-          console.error('useWallet onSnapshot error:', err);
+          if (!cancelled) console.error('useWallet onSnapshot error:', err);
         }
       );
     };
@@ -61,6 +66,7 @@ export function useWallet(userId: string) {
     loadWallet();
 
     return () => {
+      cancelled = true;
       if (unsubscribe) unsubscribe();
     };
   }, [userId]);

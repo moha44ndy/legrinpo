@@ -347,7 +347,7 @@ export default function CanalDiscussionPage() {
             </button>
           </div>
           <div className="header-actions">
-            {userId && (
+            {!authLoading && userId && !userId.startsWith('temp_') && (
               <Wallet
                 userId={userId}
                 username={username}
@@ -359,11 +359,13 @@ export default function CanalDiscussionPage() {
             )}
           </div>
         </div>
-        {adCanalHtml ? (
-          <div className="ad-bar">
+        <div className="ad-bar">
+          {adCanalHtml ? (
             <div ref={setAdBarRef} className="ad-bar-content" />
-          </div>
-        ) : null}
+          ) : (
+            <span className="ad-bar-label">Espace publicitaire</span>
+          )}
+        </div>
       </header>
 
       {/* Public Rooms Section — squelette pendant le tout premier chargement uniquement */}

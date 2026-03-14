@@ -90,17 +90,6 @@ export default function Wallet({ userId, username, userEmail, showTrigger = true
     setAvatarImgFailed(false);
   }, [userProfile?.avatar]);
 
-  if (loading) {
-    return (
-      <div className="wallet-container">
-        <div className="wallet-header">
-          <IconWallet size={18} className="wallet-icon" />
-          <span className="wallet-loading">Chargement...</span>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="wallet-container">
@@ -238,7 +227,9 @@ export default function Wallet({ userId, username, userEmail, showTrigger = true
             <div className="wallet-header-compact" aria-label="Portefeuille">
               <IconWallet size={14} className="wallet-icon-compact" />
               {username && <span className="wallet-username-compact">{username.toUpperCase()}</span>}
-              <span className="wallet-balance-compact">{balance.toFixed(2)} FCFA</span>
+              <span className="wallet-balance-compact" title={!loading && typeof balance === 'number' ? `${balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} FCFA` : undefined}>
+                {loading ? '…' : userId.startsWith('temp_') ? '—' : `${(balance ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} FCFA`}
+              </span>
             </div>
           </div>
         </>

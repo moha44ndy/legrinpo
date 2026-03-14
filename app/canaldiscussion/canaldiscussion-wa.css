@@ -6,8 +6,8 @@
 
 .wa-container {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #0a0e27;
-    color: #ffffff;
+    background: var(--color-bg);
+    color: var(--color-text-1);
     min-height: 100vh;
     min-height: 100dvh;
     height: 100%;
@@ -18,12 +18,18 @@
 
 /* Header — safe areas (barre de statut) */
 .wa-header {
-    background: #1a1f3a;
-    padding: 12px 16px 8px;
+    min-height: 56px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-bg);
+    padding: 12px 16px 12px;
     padding-top: max(12px, env(safe-area-inset-top, 44px));
     padding-left: max(16px, env(safe-area-inset-left, 0));
     padding-right: max(16px, env(safe-area-inset-right, 0));
-    border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: none;
 }
 
 .header-top {
@@ -41,10 +47,11 @@
     min-width: 0;
 }
 
+.wa-header .header-title,
 .header-title {
     font-size: 20px;
-    font-weight: 600;
-    color: #4a9eff;
+    font-weight: 700;
+    color: var(--color-accent);
     flex: 1;
     min-width: 0;
     text-align: left;
@@ -67,8 +74,25 @@
 }
 
 .header-menu-dots:hover {
-    background: rgba(74, 158, 255, 0.15);
-    color: #4a9eff;
+    background: var(--color-accent-dim);
+    color: var(--color-accent);
+}
+
+/* Badge portefeuille dans le header (solde dynamique depuis le composant) */
+.wa-header .header-actions .wallet-container-compact .wallet-header-compact {
+    background: var(--color-surface-2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--color-text-1);
+    white-space: nowrap;
+    border: none;
+}
+
+/* Éviter que le solde soit tronqué : toujours afficher le texte complet (ex. "0,00 FCFA") */
+.wa-header .header-actions .wallet-balance-compact {
+    overflow: visible;
+    min-width: 4.5em;
 }
 
 /* Wallet en mode modal uniquement : le conteneur ne prend pas de place */
@@ -101,15 +125,15 @@
 
 .categorie-back-bar {
     padding: 10px 16px;
-    background: #0a0e27;
-    border-bottom: 1px solid rgba(74, 158, 255, 0.15);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .categorie-back-link {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: #4a9eff;
+    color: var(--color-accent);
     text-decoration: none;
     font-size: 15px;
     font-weight: 500;
@@ -117,6 +141,11 @@
 
 .categorie-back-link:hover {
     text-decoration: underline;
+}
+
+.categorie-back-link-inline {
+    display: inline-flex;
+    margin-bottom: 12px;
 }
 
 .new-chat-btn {
@@ -178,8 +207,10 @@
 }
 
 .ad-bar-label {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    color: var(--color-text-3);
+    text-align: center;
+    padding: 4px 0;
 }
 
 .ad-bar-wrapper {
@@ -236,16 +267,16 @@
 
 .native-ad-label {
     position: absolute;
-    top: 2px;
-    right: 2px;
-    font-size: 5px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.65);
-    background: rgba(0, 0, 0, 0.35);
-    padding: 0 2px;
-    border-radius: 1px;
-    text-transform: uppercase;
-    letter-spacing: 0.01em;
+    top: 12px;
+    right: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: var(--color-text-3);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: none;
     z-index: 1;
     pointer-events: none;
     line-height: 1.2;
@@ -268,8 +299,24 @@
 }
 
 .native-ad-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-text-3);
+}
+
+.native-ad-placeholder::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 16px;
+    background: var(--color-text-2);
+    opacity: 0.5;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 
 /* Chat Filters */
@@ -636,8 +683,8 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 16px;
-    background: #0a0e27;
+    padding: 24px;
+    background: var(--color-bg);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -805,12 +852,49 @@
 
 .public-category-card {
     text-decoration: none;
-    border: 1px solid rgba(74, 158, 255, 0.3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    min-height: 180px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 150ms ease;
+    box-shadow: none;
 }
 
 .public-category-card:hover {
-    background-color: rgba(74, 158, 255, 0.2);
-    border-color: rgba(74, 158, 255, 0.5);
+    background: var(--color-surface-2);
+    border-color: var(--color-border-mid);
+    transform: scale(1.01);
+}
+
+.public-category-card span:first-of-type {
+    color: var(--color-text-2);
+    width: 32px;
+    height: 32px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.public-category-card span:nth-of-type(2) {
+    color: var(--color-accent);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.public-category-card small {
+    color: var(--color-text-3);
+    font-size: 13px;
+    font-weight: 400;
 }
 
 /* Sans catégorie toujours en dernière position dans la grille */
@@ -833,9 +917,9 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 255px;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 24px;
     align-content: start;
 }
 
@@ -847,38 +931,55 @@
 }
 
 .public-room-btn {
-    background-color: rgba(74, 158, 255, 0.1);
-    border: 1px solid rgba(74, 158, 255, 0.3);
-    border-radius: 8px;
-    padding: 20px 16px;
-    color: #ffffff;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    min-height: 180px;
+    color: var(--color-text-1);
     cursor: pointer;
-    transition: all 0.2s;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 10px;
     text-align: center;
-    min-height: 0;
+    transition: all 150ms ease;
     height: 100%;
     max-height: 100%;
     overflow: hidden;
+    box-shadow: none;
+}
+
+.public-room-btn:hover {
+    background: var(--color-surface-2);
+    border-color: var(--color-border-mid);
+    transform: scale(1.01);
 }
 
 .public-room-btn span:first-child {
     font-size: 24px;
+    color: var(--color-text-2);
+    width: 32px;
+    height: 32px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .public-room-btn span:nth-child(2) {
-    font-weight: 700;
-    font-size: 14px;
-    color: #4a9eff;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--color-accent);
+    margin-bottom: 6px;
 }
 
 .public-room-btn small {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-text-3);
 }
 
 .public-room-icon {
@@ -945,6 +1046,28 @@
 }
 
 /* Responsive */
+/* Bottom navigation (mobile) */
+.wa-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 56px;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    box-shadow: none;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+}
+
+.wa-bottom-nav .nav-icon-active {
+    color: var(--color-accent);
+}
+
+.wa-bottom-nav .nav-icon-inactive {
+    color: var(--color-text-3);
+}
+
 @media (max-width: 768px) {
     .wa-header {
         padding: 10px 12px 8px;
@@ -952,6 +1075,16 @@
 
     .header-title {
         font-size: 18px;
+    }
+
+    .public-rooms-section {
+        padding: 16px;
+    }
+
+    .public-room-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 16px;
     }
 
     .header-actions > div {
@@ -1014,14 +1147,10 @@
         max-width: calc(100% - 24px);
     }
 
-    .public-room-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-auto-rows: 238px;
-        align-content: start;
-    }
-
-    .public-room-grid > * {
-        max-height: 238px;
+    .public-room-btn,
+    .public-category-card {
+        min-height: 140px;
+        padding: 20px 16px;
     }
 
     .join-form-modal {
@@ -1032,17 +1161,13 @@
 @media (max-width: 480px) {
     .public-room-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-        grid-auto-rows: 238px;
-        align-content: start;
-    }
-
-    .public-room-grid > * {
-        max-height: 238px;
+        gap: 12px;
+        padding: 16px;
     }
 
     .public-room-btn {
-        padding: 16px 10px;
+        padding: 32px 24px;
+        min-height: 180px;
     }
 
     .public-room-btn span:first-child {

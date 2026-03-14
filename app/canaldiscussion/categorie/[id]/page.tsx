@@ -226,7 +226,7 @@ export default function CanalCategoriePage() {
             </button>
           </div>
           <div className="header-actions">
-            {userId && (
+            {!authLoading && userId && !userId.startsWith('temp_') && (
               <Wallet
                 userId={userId}
                 username={username}
@@ -238,28 +238,23 @@ export default function CanalCategoriePage() {
             )}
           </div>
         </div>
+        <div className="ad-bar">
+          {adCanalHtml ? (
+            <div ref={setAdBarRef} className="ad-bar-content" />
+          ) : (
+            <span className="ad-bar-label">Espace publicitaire</span>
+          )}
+        </div>
       </header>
 
-      <div className="ad-bar">
-        {adCanalHtml ? (
-          <div ref={setAdBarRef} className="ad-bar-content" />
-        ) : (
-          <span className="ad-bar-label">Espace publicitaire</span>
-        )}
-      </div>
-
-      <div className="categorie-back-bar">
+      <main className="public-rooms-section">
         <Link
           href="/canaldiscussion"
-          className="categorie-back-link"
+          className="categorie-back-link categorie-back-link-inline"
           aria-label="Retour aux catégories"
         >
           <IconArrowLeft size={20} />
-          <span>Retour</span>
         </Link>
-      </div>
-
-      <main className="public-rooms-section">
         {/* Squelette uniquement lors du tout premier chargement (aucune room encore disponible) */}
         {loading && rooms.length === 0 && (
           <div className="public-rooms-skeleton" aria-busy="true" aria-label="Chargement des discussions de la catégorie">
