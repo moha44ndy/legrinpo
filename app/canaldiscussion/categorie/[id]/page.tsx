@@ -96,16 +96,36 @@ export default function CanalCategoriePage() {
   }, [adCanalHtml, runAdInjection]);
 
   const loadCategoryAndRooms = useCallback(async () => {
-    if (!id || !db) {
+    if (!id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
+
+    const tryCacheFallback = (): boolean => {
+      const cached = getPublicRoomsCache();
+      if (!cached) return false;
+      if (id === SANS_CATEGORIE_ID) {
+        setCategoryName('Sans catégorie');
+        const list: RoomItem[] = cached.rooms
+          .filter((room) => !room.categoryId)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setRooms(list);
+        return true;
+      }
+      const cat = cached.categories.find((c) => c.id === id);
+      const catName = cat?.name ?? '';
+      if (catName) setCategoryName(catName);
+      const baseList: RoomItem[] = cached.rooms.filter((room) => room.categoryId === id);
+      const sorted = sortRoomsForCategory(baseList, catName || '');
+      setRooms(sorted);
+      return true;
+    };
+
     try {
       if (id === SANS_CATEGORIE_ID) {
         const label = 'Sans catégorie';
-        // Tenter d'abord d'utiliser le cache partagé s'il est encore valide
         const cached = getPublicRoomsCache();
         if (cached && isPublicRoomsCacheValid()) {
           setCategoryName(label);
@@ -116,7 +136,12 @@ export default function CanalCategoriePage() {
           setLoading(false);
           return;
         }
-
+        if (!db) {
+          if (tryCacheFallback()) setError(null);
+          else setError('Connexion indisponible');
+          setLoading(false);
+          return;
+        }
         setCategoryName(label);
         const roomsRef = collection(db, 'rooms');
         const q = query(roomsRef, where('type', '==', 'public'));
@@ -133,24 +158,30 @@ export default function CanalCategoriePage() {
         });
         setRooms(list);
       } else {
-        // Tenter d'abord d'utiliser le cache partagé s'il est encore valide
         const cached = getPublicRoomsCache();
         if (cached && isPublicRoomsCacheValid()) {
           const cat = cached.categories.find((c) => c.id === id);
           const catName = cat?.name ?? '';
           if (catName) setCategoryName(catName);
           const baseList: RoomItem[] = cached.rooms.filter((room) => room.categoryId === id);
-          const sortedFromCache = sortRoomsForCategory(baseList, catName || ''); // même logique que Firestore
-          setRooms(sortedFromCache);
+          setRooms(sortRoomsForCategory(baseList, catName || ''));
           setLoading(false);
           return;
         }
-
+        if (!db) {
+          if (tryCacheFallback()) setError(null);
+          else setError('Connexion indisponible');
+          setLoading(false);
+          return;
+        }
         const catRef = doc(db, 'categories', id);
         const catSnap = await getDoc(catRef);
         if (!catSnap.exists()) {
-          setError('Catégorie introuvable');
-          setRooms([]);
+          if (tryCacheFallback()) setError(null);
+          else {
+            setError('Catégorie introuvable');
+            setRooms([]);
+          }
           setLoading(false);
           return;
         }
@@ -170,13 +201,15 @@ export default function CanalCategoriePage() {
               categoryId: d.categoryId as string | undefined,
             };
           });
-        const sorted = sortRoomsForCategory(baseList, catName);
-        setRooms(sorted);
+        setRooms(sortRoomsForCategory(baseList, catName));
       }
     } catch (err) {
       console.error('Erreur chargement catégorie:', err);
-      setError('Erreur de chargement');
-      setRooms([]);
+      if (tryCacheFallback()) setError(null);
+      else {
+        setError('Erreur de chargement. Réessayez.');
+        setRooms([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -270,8 +303,15 @@ export default function CanalCategoriePage() {
           </div>
         )}
         {error && (
-          <div className="admin-error" style={{ margin: 16, padding: 12, background: 'rgba(239,68,68,0.15)', borderRadius: 8, color: '#ef4444' }}>
-            {error}
+          <div className="public-rooms-empty">
+            <p className="public-rooms-empty-text" style={{ color: '#ef4444' }}>{error}</p>
+            <button
+              type="button"
+              className="public-rooms-retry-btn"
+              onClick={() => loadCategoryAndRooms()}
+            >
+              Réessayer
+            </button>
           </div>
         )}
         {!loading && !error && rooms.length === 0 && (

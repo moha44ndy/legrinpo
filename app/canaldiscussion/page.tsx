@@ -225,46 +225,79 @@ export default function CanalDiscussionPage() {
     const loadDiscussions = async () => {
       const chats: ChatItem[] = [];
 
-      // Salons publics : Firebase (rooms) + catégories pour regroupement
+      // Salons publics : Firebase (rooms) + catégories). allSettled pour ne pas tout perdre si une requête échoue.
       let publicRooms: { id: string; name: string; description: string; createdAt: number; categoryId?: string }[] = [];
       let categoriesList: { id: string; name: string; order: number }[] = [];
+
+      const useCacheFallback = () => {
+        const cached = getPublicRoomsCache();
+        if (cached && cached.rooms.length >= 0) {
+          categoriesList = cached.categories ?? [];
+          publicRooms = cached.rooms ?? [];
+          setCategoriesCanal(categoriesList);
+          setPublicRoomsCache(publicRooms, categoriesList);
+          return true;
+        }
+        return false;
+      };
+
       if (db) {
         try {
-          const [roomsSnap, categoriesSnap] = await Promise.all([
+          const [roomsResult, categoriesResult] = await Promise.allSettled([
             getDocs(query(collection(db, 'rooms'), where('type', '==', 'public'))),
             getDocs(query(collection(db, 'categories'), orderBy('order'))),
           ]);
-          categoriesList = categoriesSnap.docs
-            .map((doc) => {
-              const d = doc.data();
-              return { id: doc.id, name: String(d.name ?? ''), order: Number(d.order ?? 0) };
-            })
-            .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-          setCategoriesCanal(categoriesList);
-          publicRooms = roomsSnap.docs
-            .map((doc) => {
-              const d = doc.data();
-              const raw = d.createdAt;
-              const createdAt =
-                raw && typeof raw === 'object' && typeof (raw as { toMillis?: () => number }).toMillis === 'function'
-                  ? (raw as { toMillis: () => number }).toMillis()
-                  : raw != null
-                    ? new Date(raw as string | number).getTime()
-                    : 0;
-              return {
-                id: doc.id,
-                name: (d.name as string) || doc.id,
-                description: (d.description as string) || '',
-                createdAt,
-                categoryId: d.categoryId as string | undefined,
-              };
-            })
-            .sort((a, b) => a.createdAt - b.createdAt);
 
-          setPublicRoomsCache(publicRooms, categoriesList);
+          if (categoriesResult.status === 'fulfilled' && categoriesResult.value.docs) {
+            categoriesList = categoriesResult.value.docs
+              .map((doc) => {
+                const d = doc.data();
+                return { id: doc.id, name: String(d.name ?? ''), order: Number(d.order ?? 0) };
+              })
+              .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+          } else if (categoriesResult.status === 'rejected') {
+            console.warn('Firebase catégories échoué, utilisation du cache si disponible:', categoriesResult.reason);
+            const cached = getPublicRoomsCache();
+            if (cached?.categories?.length) categoriesList = cached.categories;
+          }
+
+          if (roomsResult.status === 'fulfilled' && roomsResult.value.docs) {
+            publicRooms = roomsResult.value.docs
+              .map((doc) => {
+                const d = doc.data();
+                const raw = d.createdAt;
+                const createdAt =
+                  raw && typeof raw === 'object' && typeof (raw as { toMillis?: () => number }).toMillis === 'function'
+                    ? (raw as { toMillis: () => number }).toMillis()
+                    : raw != null
+                      ? new Date(raw as string | number).getTime()
+                      : 0;
+                return {
+                  id: doc.id,
+                  name: (d.name as string) || doc.id,
+                  description: (d.description as string) || '',
+                  createdAt,
+                  categoryId: d.categoryId as string | undefined,
+                };
+              })
+              .sort((a, b) => a.createdAt - b.createdAt);
+          } else if (roomsResult.status === 'rejected') {
+            console.warn('Firebase rooms échoué, utilisation du cache si disponible:', roomsResult.reason);
+            const cached = getPublicRoomsCache();
+            if (cached?.rooms?.length) publicRooms = cached.rooms;
+          }
+
+          const usedCache = categoriesList.length === 0 && publicRooms.length === 0 && useCacheFallback();
+          if (!usedCache) {
+            setCategoriesCanal(categoriesList);
+            setPublicRoomsCache(publicRooms, categoriesList);
+          }
         } catch (err) {
           console.error('Erreur chargement salons publics Firebase:', err);
+          useCacheFallback();
         }
+      } else {
+        useCacheFallback();
       }
 
       // Charger les derniers messages en parallèle (au lieu d'un par un)
