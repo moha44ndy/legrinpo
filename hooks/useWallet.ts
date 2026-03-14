@@ -5,10 +5,24 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getOrCreateWallet, getBalance, Wallet } from '@/utils/wallet';
 
+const BALANCE_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const balanceCache: { [userId: string]: { balance: number; wallet: Wallet | null; at: number } } = {};
+
+function getCachedBalance(userId: string): { balance: number; wallet: Wallet | null } | null {
+  const entry = balanceCache[userId];
+  if (!entry || Date.now() - entry.at > BALANCE_CACHE_TTL_MS) return null;
+  return { balance: entry.balance, wallet: entry.wallet };
+}
+
+function setCachedBalance(userId: string, balance: number, wallet: Wallet | null) {
+  balanceCache[userId] = { balance, wallet, at: Date.now() };
+}
+
 export function useWallet(userId: string) {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [balance, setBalance] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  const cached = userId ? getCachedBalance(userId) : null;
+  const [wallet, setWallet] = useState<Wallet | null>(cached?.wallet ?? null);
+  const [balance, setBalance] = useState<number>(cached?.balance ?? 0);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,12 +37,14 @@ export function useWallet(userId: string) {
 
     const loadWallet = async () => {
       try {
-        setLoading(true);
+        if (!getCachedBalance(currentUserId)) setLoading(true);
         setError(null);
         const walletData = await getOrCreateWallet(currentUserId);
         if (cancelled) return;
+        const bal = walletData.balance || 0;
         setWallet(walletData);
-        setBalance(walletData.balance || 0);
+        setBalance(bal);
+        setCachedBalance(currentUserId, bal, walletData);
       } catch (err: any) {
         if (cancelled) return;
         console.error('Erreur chargement du portefeuille:', err);
@@ -55,6 +71,7 @@ export function useWallet(userId: string) {
             };
             setWallet(w);
             setBalance(w.balance);
+            setCachedBalance(currentUserId, w.balance, w);
           }
         },
         (err) => {
@@ -76,9 +93,9 @@ export function useWallet(userId: string) {
     try {
       const newBalance = await getBalance(userId);
       setBalance(newBalance);
-      if (wallet) {
-        setWallet({ ...wallet, balance: newBalance });
-      }
+      const nextWallet = wallet ? { ...wallet, balance: newBalance } : null;
+      if (nextWallet) setWallet(nextWallet);
+      setCachedBalance(userId, newBalance, nextWallet);
     } catch (err) {
       console.error('Erreur lors de la mise à jour du solde:', err);
     }
