@@ -31,6 +31,15 @@ yarn-error.log*
 # Firebase service account key (ne jamais commiter)
 *-firebase-adminsdk-*.json
 
+# Package Google Play (contient keystore / clés — ne pas commiter)
+Legrinpo - Google Play package.zip
+Legrinpo - Google Play package/
+
+# Clés de signature Android
+signing.keystore
+signing-key-info.txt
+*.jks
+
 # vercel
 .vercel
 
