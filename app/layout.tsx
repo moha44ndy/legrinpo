@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PwaSwRegistration } from '@/components/PwaSwRegistration'
 import { SyncRegistration } from '@/components/SyncRegistration'
 import { CapacitorBodyClass } from '@/components/CapacitorBodyClass'
 import { AdMobBanner } from '@/components/AdMobBanner'
@@ -54,6 +55,7 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
+          <PwaSwRegistration />
           <SyncRegistration />
           <CapacitorBodyClass />
           <AdMobBanner />
