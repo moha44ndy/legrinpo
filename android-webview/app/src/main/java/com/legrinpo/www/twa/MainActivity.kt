@@ -17,14 +17,27 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
 
     private val legrinpoUrl = "https://www.legrinpo.com"
+    private lateinit var webView: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val webView = findViewById<WebView>(R.id.webview)
-        webView.webViewClient = WebViewClient()
+        webView = findViewById(R.id.webview)
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean {
+                val url = request.url?.toString() ?: return false
+                // On garde la navigation "dans l'app" pour les liens web classiques.
+                return if (url.startsWith("http://") || url.startsWith("https://")) {
+                    view.loadUrl(url)
+                    true
+                } else {
+                    // Ex: tel:, mailto:, intent: -> laisse Android gérer.
+                    false
+                }
+            }
+        }
         webView.webChromeClient = WebChromeClient()
 
         val settings = webView.settings
@@ -34,7 +47,19 @@ class MainActivity : AppCompatActivity() {
         settings.cacheMode = WebSettings.LOAD_DEFAULT
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         settings.userAgentString = settings.userAgentString + " LegrinpoWebView/1.0"
+        settings.loadsImagesAutomatically = true
+        settings.loadWithOverviewMode = true
+        settings.useWideViewPort = true
 
         webView.loadUrl(legrinpoUrl)
+    }
+
+    override fun onBackPressed() {
+        // Permet de revenir dans l'historique du site (au lieu de fermer l'app).
+        if (::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+            return
+        }
+        super.onBackPressed()
     }
 }
