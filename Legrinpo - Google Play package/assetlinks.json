@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.legrinpo.www.twa",
+        "sha256_cert_fingerprints": ["FD:DE:32:23:56:F0:1E:E5:1B:BA:01:A4:E5:29:8A:1A:E9:CC:80:46:12:93:66:C0:10:3A:08:27:70:B7:9F:4F"]
+      }
+    }]
