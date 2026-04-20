@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/monthly-bonus",
       "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/supabase-keepalive",
+      "schedule": "0 6 * * *"
     }
   ]
 }
