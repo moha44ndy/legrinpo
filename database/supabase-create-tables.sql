@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   is_admin smallint NOT NULL DEFAULT 0,
-  is_disabled smallint NOT NULL DEFAULT 0
+  is_disabled smallint NOT NULL DEFAULT 0,
+  terms_accepted_at timestamp with time zone
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_key ON public.users (email);
@@ -85,3 +86,14 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
   processed_by bigint,
   note text
 );
+
+-- Modération : acceptation CGU (colonne users) + utilisateurs bloqués
+CREATE TABLE IF NOT EXISTS public.blocked_users (
+  id BIGSERIAL PRIMARY KEY,
+  user_id bigint NOT NULL,
+  blocked_uid character varying(255) NOT NULL,
+  blocked_username character varying(100),
+  created_at timestamp with time zone DEFAULT now(),
+  UNIQUE (user_id, blocked_uid)
+);
+CREATE INDEX IF NOT EXISTS blocked_users_user_id_idx ON public.blocked_users (user_id);

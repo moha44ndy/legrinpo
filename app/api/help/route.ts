@@ -15,6 +15,7 @@ const SUBJECT_LABELS: Record<string, string> = {
   portefeuille: 'Question sur le portefeuille',
   retrait: 'Problème de retrait',
   technique: 'Problème technique',
+  signalement: 'Signalement de contenu ou comportement',
   autre: 'Autre',
 };
 

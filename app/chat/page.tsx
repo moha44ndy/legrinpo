@@ -8,6 +8,9 @@ import { useChat, FileAttachment } from '@/hooks/useChat';
 import VoiceRecorder, { VoiceRecorderRef } from '@/components/VoiceRecorder';
 import VoiceMessagePlayer from '@/components/VoiceMessagePlayer';
 import { IconLock, IconStatusDot, IconAttachment, IconImage, IconVideo, IconMusic, IconSettings, IconTrash } from '@/components/Icons';
+import { TermsAcceptanceGate } from '@/components/TermsAcceptanceGate';
+import { useBlockedUsers } from '@/hooks/useBlockedUsers';
+import type { ChatMessage } from '@/hooks/useChat';
 import { uploadFile, uploadAudio, isFileTypeAllowed, getMediaType } from '@/utils/fileUpload';
 import { v4 as uuidv4 } from 'uuid';
 import '../globals.css';
@@ -66,6 +69,8 @@ function ChatPageContent() {
   
   const getRoomDisplayName = () => roomNameFromUrl || 'Discussion';
 
+  const { blockedUserIds, blockUser: blockUserAction } = useBlockedUsers(!!userId);
+
   // useChat doit être appelé avant tout return conditionnel
   const {
     messages,
@@ -90,6 +95,7 @@ function ChatPageContent() {
     userId: userId || '', // Passer une chaîne vide si userId est null
     userAvatar: userProfile?.avatar ?? undefined,
     isPrivateRoom,
+    blockedUserIds,
   });
   
   // Tous les useEffect doivent être appelés avant tout return conditionnel
@@ -453,6 +459,74 @@ function ChatPageContent() {
     });
   };
 
+  const handleReportMessage = (message: ChatMessage) => {
+    setConfirmModal({
+      title: 'Signaler ce message',
+      message:
+        'Ce signalement sera transmis à notre équipe de modération. Continuer ?',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setClickedMessageId(null);
+        setMessageMenuPosition(null);
+        try {
+          const res = await fetch('/api/moderation/report-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roomId,
+              messageId: message.id,
+              messageText: message.text,
+              authorId: message.userId,
+              authorName: message.username,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setBannerMessage({
+              type: 'error',
+              text: data.error || 'Erreur lors du signalement.',
+            });
+            return;
+          }
+          setBannerMessage({
+            type: 'success',
+            text: 'Message signalé. Merci pour votre vigilance.',
+          });
+        } catch {
+          setBannerMessage({
+            type: 'error',
+            text: 'Erreur de connexion lors du signalement.',
+          });
+        }
+      },
+    });
+  };
+
+  const handleBlockUser = (message: ChatMessage) => {
+    if (!message.userId || message.userId === userId) return;
+    setConfirmModal({
+      title: 'Bloquer cet utilisateur',
+      message: `Vous ne verrez plus les messages de ${message.username}. Continuer ?`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setClickedMessageId(null);
+        setMessageMenuPosition(null);
+        try {
+          await blockUserAction(message.userId, message.username);
+          setBannerMessage({
+            type: 'success',
+            text: `${message.username} a été bloqué.`,
+          });
+        } catch (err: unknown) {
+          setBannerMessage({
+            type: 'error',
+            text: err instanceof Error ? err.message : 'Impossible de bloquer cet utilisateur.',
+          });
+        }
+      },
+    });
+  };
+
   const openMessageMenu = (messageId: string, x: number, y: number) => {
     setClickedMessageId(messageId);
     // Positionner le menu à la position du clic, avec un décalage pour centrer le menu
@@ -635,6 +709,7 @@ function ChatPageContent() {
   const chatSubtitle = members.length > 0 ? `${members.length} membre${members.length > 1 ? 's' : ''}` : '';
 
   return (
+    <TermsAcceptanceGate>
     <main className="chat-main-container">
       {/* Modal alerte (erreur / succès) */}
       {bannerMessage && (
@@ -1348,6 +1423,28 @@ function ChatPageContent() {
                             >
                               <span>Copier le texte</span>
                             </button>
+                            {!isOwn && (
+                              <button
+                                className="context-menu-item"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReportMessage(message);
+                                }}
+                              >
+                                <span>Signaler ce message</span>
+                              </button>
+                            )}
+                            {!isOwn && message.userId && !blockedUserIds.includes(message.userId) && (
+                              <button
+                                className="context-menu-item context-menu-item-danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBlockUser(message);
+                                }}
+                              >
+                                <span>Bloquer cet utilisateur</span>
+                              </button>
+                            )}
                             {isOwn && (
                               <button
                                 className="context-menu-item context-menu-item-danger"
@@ -1524,6 +1621,7 @@ function ChatPageContent() {
         </div>
       </div>
     </main>
+    </TermsAcceptanceGate>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import '../globals.css';
 import './settings.css';
 
@@ -13,6 +14,9 @@ export default function SettingsPage() {
   const [editUsernameValue, setEditUsernameValue] = useState('');
   const [usernameEditError, setUsernameEditError] = useState<string | null>(null);
   const [usernameEditSaving, setUsernameEditSaving] = useState(false);
+  const [blockedList, setBlockedList] = useState<{ userId: string; username: string }[]>([]);
+  const [blockedLoading, setBlockedLoading] = useState(true);
+  const { unblockUser } = useBlockedUsers(!!user);
 
   const username = userProfile?.username || (user as { username?: string })?.username || '';
 
@@ -25,6 +29,25 @@ export default function SettingsPage() {
   useEffect(() => {
     setEditUsernameValue(username);
   }, [username]);
+
+  useEffect(() => {
+    if (!user) return;
+    setBlockedLoading(true);
+    fetch('/api/user/blocked')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.blocked)) {
+          setBlockedList(
+            data.blocked.map((b: { userId: string; username: string }) => ({
+              userId: b.userId,
+              username: b.username,
+            }))
+          );
+        }
+      })
+      .catch(() => setBlockedList([]))
+      .finally(() => setBlockedLoading(false));
+  }, [user]);
 
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
@@ -140,9 +163,46 @@ export default function SettingsPage() {
               <Link href="/help" className="settings-link">Aide</Link>
             </li>
             <li>
+              <Link href="/terms" className="settings-link">Conditions d&apos;utilisation</Link>
+            </li>
+            <li>
               <Link href="/privacy" className="settings-link">Politique de confidentialité</Link>
             </li>
           </ul>
+        </section>
+
+        <section className="help-section settings-section">
+          <h2>Utilisateurs bloqués</h2>
+          <p className="help-intro" style={{ marginBottom: 12 }}>
+            Les messages des utilisateurs bloqués ne s&apos;affichent plus dans vos discussions.
+          </p>
+          {blockedLoading ? (
+            <p>Chargement…</p>
+          ) : blockedList.length === 0 ? (
+            <p>Aucun utilisateur bloqué.</p>
+          ) : (
+            <ul className="settings-blocked-list">
+              {blockedList.map((b) => (
+                <li key={b.userId} className="settings-blocked-item">
+                  <span>{b.username}</span>
+                  <button
+                    type="button"
+                    className="settings-btn settings-btn-secondary"
+                    onClick={async () => {
+                      try {
+                        await unblockUser(b.userId);
+                        setBlockedList((prev) => prev.filter((x) => x.userId !== b.userId));
+                      } catch (err: unknown) {
+                        alert(err instanceof Error ? err.message : 'Erreur lors du déblocage.');
+                      }
+                    }}
+                  >
+                    Débloquer
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="help-section settings-section settings-danger">

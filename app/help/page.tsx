@@ -95,6 +95,7 @@ export default function HelpPage() {
                   <option value="portefeuille">Question sur le portefeuille</option>
                   <option value="retrait">Problème de retrait</option>
                   <option value="technique">Problème technique</option>
+                  <option value="signalement">Signaler un contenu ou un comportement</option>
                   <option value="autre">Autre</option>
                 </select>
               </label>

@@ -10,6 +10,7 @@ import { getCountryFromRoomName, getCountryFlagUrl } from '@/lib/countries';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, getDocs, where } from 'firebase/firestore';
 import { getPublicRoomsCache, isPublicRoomsCacheValid, setPublicRoomsCache } from '@/lib/public-rooms-client-cache';
+import { TermsAcceptanceGate } from '@/components/TermsAcceptanceGate';
 import '../globals.css';
 import './canaldiscussion-wa.css';
 
@@ -364,6 +365,7 @@ export default function CanalDiscussionPage() {
   }, [sectionLoaded.discussions]);
 
   return (
+    <TermsAcceptanceGate>
     <div className="wa-container">
       {/* Header */}
       <header className="wa-header">
@@ -527,5 +529,6 @@ export default function CanalDiscussionPage() {
         );
       })()}
     </div>
+    </TermsAcceptanceGate>
   );
 }

@@ -27,6 +27,25 @@
   margin-bottom: 14px;
 }
 
+.settings-blocked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-blocked-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(26, 35, 126, 0.2);
+  border-radius: 8px;
+}
+
 /* Bloc pseudo */
 .settings-username-row {
   display: flex;

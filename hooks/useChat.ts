@@ -64,6 +64,7 @@ interface UseChatOptions {
   userId: string;
   userAvatar?: string; // Photo de profil pour les nouveaux messages
   isPrivateRoom: boolean;
+  blockedUserIds?: string[];
 }
 
 export function useChat({
@@ -73,7 +74,15 @@ export function useChat({
   userId,
   userAvatar,
   isPrivateRoom,
+  blockedUserIds = [],
 }: UseChatOptions) {
+  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
+
+  useEffect(() => {
+    if (blockedSet.size === 0) return;
+    setMessages((prev) => prev.filter((m) => !blockedSet.has(m.userId)));
+  }, [blockedSet]);
+
   const cached = roomId ? getChatRoomCache(roomId) : null;
   const hasValidCache = !!cached && !!cached.messages && cached.messages.length > 0;
 
@@ -233,6 +242,9 @@ export function useChat({
             const newMessages: ChatMessage[] = [];
             snapshot.forEach((doc) => {
               const data = doc.data();
+              const msgUserId = data.userId || '';
+              if (msgUserId && blockedSet.has(msgUserId)) return;
+
               const reactions = data.reactions || {};
               const reactionCount = Object.keys(reactions).length;
               
@@ -276,7 +288,7 @@ export function useChat({
       unsubscribeMessages?.();
       unsubscribeRoom?.();
     };
-  }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, hasValidCache, messages.length]);
+  }, [roomId, roomPassword, isPrivateRoom, userId, passwordVerified, hasValidCache, messages.length, blockedSet]);
 
   const sendMessage = useCallback(
     async (
