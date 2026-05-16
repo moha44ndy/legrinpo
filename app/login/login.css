@@ -115,6 +115,19 @@
     cursor: not-allowed;
 }
 
+.auth-button-demo {
+    background: transparent;
+    border: 1px solid rgba(74, 158, 255, 0.5);
+    color: #4a9eff;
+    margin-top: 0;
+}
+
+.auth-button-demo:hover:not(:disabled) {
+    background: rgba(74, 158, 255, 0.12);
+    transform: none;
+    box-shadow: none;
+}
+
 .auth-button-block {
     display: inline-block;
     text-align: center;

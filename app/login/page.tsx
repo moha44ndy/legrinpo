@@ -12,9 +12,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { login } = useAuth();
+  const showDemoLogin = process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED === 'true';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +56,24 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setError('');
+    setDemoLoading(true);
+    try {
+      const res = await fetch('/api/auth/demo-login', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || 'Connexion démo impossible.');
+        return;
+      }
+      window.location.href = '/canaldiscussion';
+    } catch {
+      setError('Erreur de connexion démo.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -75,7 +95,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email ou pseudo"
               required
-              disabled={loading}
+              disabled={loading || demoLoading}
             />
           </div>
 
@@ -88,16 +108,27 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              disabled={loading}
+              disabled={loading || demoLoading}
             />
             <p className="auth-forgot-wrap">
               <Link href="/forgot-password" className="auth-link auth-forgot-link">Mot de passe oublié ?</Link>
             </p>
           </div>
 
-          <button type="submit" className="auth-button" disabled={loading}>
+          <button type="submit" className="auth-button" disabled={loading || demoLoading}>
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
+
+          {showDemoLogin && (
+            <button
+              type="button"
+              className="auth-button auth-button-demo"
+              onClick={handleDemoLogin}
+              disabled={loading || demoLoading}
+            >
+              {demoLoading ? 'Connexion démo...' : 'Compte démo (review)'}
+            </button>
+          )}
         </form>
 
         <div className="auth-footer">
